@@ -1,0 +1,309 @@
+{
+  "name": "Remarketing - Leads que NÃO compraram",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-1200, 400],
+      "id": "trigger-manual-rmkt",
+      "name": "Disparar Remarketing (manual)"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cfg-base",
+              "name": "uazapi_base",
+              "value": "https://redirect.uazapi.com",
+              "type": "string"
+            },
+            {
+              "id": "cfg-token",
+              "name": "instance_token",
+              "value": "COLE_AQUI_O_TOKEN_DA_SUA_INSTANCIA_UAZAPI",
+              "type": "string"
+            },
+            {
+              "id": "cfg-msg",
+              "name": "mensagem",
+              "value": "Oi! 😊 Vi que você chegou até a gente mas ainda não garantiu o seu. Tá com alguma dúvida? Posso te ajudar a fechar agora — qualquer coisa é só responder por aqui!",
+              "type": "string"
+            },
+            {
+              "id": "cfg-wait",
+              "name": "wait_segundos",
+              "value": 8,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-980, 400],
+      "id": "node-config-rmkt",
+      "name": "CONFIGURAÇÃO"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "usuarios",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-760, 400],
+      "id": "node-compradores",
+      "name": "Compradores (usuarios)",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [-540, 400],
+      "id": "node-limit-compradores",
+      "name": "Colapsa p/ 1 (compradores)"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "remarketing_enviados",
+        "returnAll": true,
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-320, 400],
+      "id": "node-ja-enviados",
+      "name": "Já Enviados",
+      "alwaysOutputData": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [-100, 400],
+      "id": "node-limit-enviados",
+      "name": "Colapsa p/ 1 (enviados)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIGURAÇÃO').first().json.uazapi_base }}/chat/find",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $('CONFIGURAÇÃO').first().json.instance_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"operator\": \"AND\",\n  \"sort\": \"-wa_lastMsgTimestamp\",\n  \"limit\": 5000,\n  \"offset\": 0\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [120, 400],
+      "id": "node-buscar-chats",
+      "name": "UAZAPI - Buscar Chats",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500
+    },
+    {
+      "parameters": {
+        "jsCode": "// ───────────────────────────────────────────────────────────────\n// FILTRA LEADS: contatos da UAZAPI − compradores − já enviados\n// Sem LLM: pura normalização + comparação por chave de telefone.\n// ───────────────────────────────────────────────────────────────\n\n// 1) Coleta os chats da resposta da UAZAPI (tolerante a vários formatos)\nconst rawItems = $('UAZAPI - Buscar Chats').all();\nlet chats = [];\nfor (const it of rawItems) {\n  const j = it.json;\n  if (Array.isArray(j)) chats.push(...j);\n  else if (Array.isArray(j.chats)) chats.push(...j.chats);\n  else if (Array.isArray(j.data)) chats.push(...j.data);\n  else if (Array.isArray(j.results)) chats.push(...j.results);\n  else if (j && typeof j === 'object') chats.push(j);\n}\nconsole.log('Total de chats brutos:', chats.length);\n\n// 2) Helpers de normalização (resolve +55, sufixos e o 9º dígito BR)\nfunction onlyDigits(s) { return (s == null ? '' : String(s)).replace(/\\D/g, ''); }\nfunction chave(raw) {\n  let d = onlyDigits(raw);\n  if (d.startsWith('55') && d.length >= 12) d = d.slice(2); // tira código do país\n  if (d.length === 11) d = d.slice(0, 2) + d.slice(3);      // tira o 9 extra (DDD+9+8 → DDD+8)\n  return d; // chave canônica = DDD + 8 dígitos\n}\n\n// 3) Conjunto de COMPRADORES (usuarios.telefone)\nconst buyers = new Set(\n  $('Compradores (usuarios)').all()\n    .map(i => chave(i.json.telefone))\n    .filter(Boolean)\n);\nconsole.log('Compradores:', buyers.size);\n\n// 4) Conjunto de JÁ ENVIADOS (remarketing_enviados.telefone_chave)\nconst sent = new Set(\n  $('Já Enviados').all()\n    .map(i => i.json.telefone_chave)\n    .filter(Boolean)\n);\nconsole.log('Já enviados:', sent.size);\n\n// 5) Monta os leads elegíveis\nconst vistos = new Set();\nconst out = [];\nfor (const chat of chats) {\n  const rawId = chat.wa_chatid || chat.id || chat.chatid || chat.jid ||\n                chat.number || chat.phone || chat.wa_fastid || '';\n  // pula grupos, broadcast e status\n  if (chat.wa_isGroup === true || /@g\\.us/i.test(rawId)) continue;\n  if (/@broadcast|status@/i.test(rawId)) continue;\n\n  const numero = onlyDigits(String(rawId).split('@')[0].split(':')[0]);\n  if (!numero || numero.length < 10) continue; // descarta ids estranhos\n\n  const k = chave(numero);\n  if (!k) continue;\n  if (buyers.has(k)) continue;   // já comprou → fora\n  if (sent.has(k)) continue;     // já recebeu → fora\n  if (vistos.has(k)) continue;   // duplicado nesta rodada → fora\n  vistos.add(k);\n\n  const nome = chat.wa_name || chat.name || chat.lead_name ||\n               chat.wa_contactName || chat.lead_fullName || '';\n\n  out.push({ json: { numero, chave: k, nome } });\n}\n\nconsole.log('Leads elegíveis para remarketing:', out.length);\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [340, 400],
+      "id": "node-filtra-leads",
+      "name": "Filtra Leads (sem LLM)"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [560, 400],
+      "id": "node-loop-leads",
+      "name": "Loop Over Leads"
+    },
+    {
+      "parameters": {
+        "amount": "={{ $('CONFIGURAÇÃO').first().json.wait_segundos }}"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [780, 520],
+      "id": "node-wait-rmkt",
+      "name": "Wait",
+      "webhookId": "rmkt-wait-0001"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('CONFIGURAÇÃO').first().json.uazapi_base }}/send/text",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $('CONFIGURAÇÃO').first().json.instance_token }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Loop Over Leads').item.json.numero }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $('CONFIGURAÇÃO').first().json.mensagem }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [1000, 520],
+      "id": "node-enviar-texto",
+      "name": "UAZAPI - Enviar Texto",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "tableId": "remarketing_enviados",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "telefone_chave",
+              "fieldValue": "={{ $('Loop Over Leads').item.json.chave }}"
+            },
+            {
+              "fieldId": "numero",
+              "fieldValue": "={{ $('Loop Over Leads').item.json.numero }}"
+            },
+            {
+              "fieldId": "nome",
+              "fieldValue": "={{ $('Loop Over Leads').item.json.nome }}"
+            },
+            {
+              "fieldId": "enviado_em",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1220, 520],
+      "id": "node-registrar-enviado",
+      "name": "Registrar Enviado",
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## 📣 Remarketing — Leads que NÃO compraram\n\n**Disparo único, lista fixa.** Roda manualmente.\n\n### Antes de rodar, edite o nó CONFIGURAÇÃO:\n1. `instance_token` → token da sua instância UAZAPI (WhatsApp comercial onde os leads chegam)\n2. `mensagem` → texto do remarketing\n\n### Como funciona\n1. **Buscar Chats** puxa os contatos individuais da UAZAPI (`/chat/find`)\n2. **Compradores** = todos os `usuarios.telefone`\n3. **Já Enviados** = `remarketing_enviados` (evita disparo duplicado — pode rodar 2x sem spam)\n4. **Filtra Leads** normaliza os números (resolve +55 e o 9º dígito) e remove compradores + já enviados — **sem LLM, só regex**\n5. **Loop + Wait (8s)** dispara um a um e **registra cada envio** em `remarketing_enviados`\n\n### ⚠️ Verifique 1 coisa\nO endpoint **`/chat/find`** e o corpo do request podem variar conforme a versão da UAZAPI. Se vier vazio, ajuste só o nó \"UAZAPI - Buscar Chats\". O nó \"Filtra Leads\" já aceita resposta em array, `.chats`, `.data` ou `.results`.",
+        "height": 460,
+        "width": 540,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-1200, -180],
+      "id": "sticky-rmkt-1",
+      "name": "Notas"
+    }
+  ],
+  "connections": {
+    "Disparar Remarketing (manual)": {
+      "main": [[{ "node": "CONFIGURAÇÃO", "type": "main", "index": 0 }]]
+    },
+    "CONFIGURAÇÃO": {
+      "main": [[{ "node": "Compradores (usuarios)", "type": "main", "index": 0 }]]
+    },
+    "Compradores (usuarios)": {
+      "main": [[{ "node": "Colapsa p/ 1 (compradores)", "type": "main", "index": 0 }]]
+    },
+    "Colapsa p/ 1 (compradores)": {
+      "main": [[{ "node": "Já Enviados", "type": "main", "index": 0 }]]
+    },
+    "Já Enviados": {
+      "main": [[{ "node": "Colapsa p/ 1 (enviados)", "type": "main", "index": 0 }]]
+    },
+    "Colapsa p/ 1 (enviados)": {
+      "main": [[{ "node": "UAZAPI - Buscar Chats", "type": "main", "index": 0 }]]
+    },
+    "UAZAPI - Buscar Chats": {
+      "main": [[{ "node": "Filtra Leads (sem LLM)", "type": "main", "index": 0 }]]
+    },
+    "Filtra Leads (sem LLM)": {
+      "main": [[{ "node": "Loop Over Leads", "type": "main", "index": 0 }]]
+    },
+    "Loop Over Leads": {
+      "main": [
+        [],
+        [{ "node": "Wait", "type": "main", "index": 0 }]
+      ]
+    },
+    "Wait": {
+      "main": [[{ "node": "UAZAPI - Enviar Texto", "type": "main", "index": 0 }]]
+    },
+    "UAZAPI - Enviar Texto": {
+      "main": [
+        [{ "node": "Registrar Enviado", "type": "main", "index": 0 }],
+        [{ "node": "Registrar Enviado", "type": "main", "index": 0 }]
+      ]
+    },
+    "Registrar Enviado": {
+      "main": [[{ "node": "Loop Over Leads", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}
