@@ -830,7 +830,7 @@
         "url": "http://89.116.225.101:3050/extrair-mlb",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"url\": \"{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK1\"].json[\"url_final\"] }}\"\n}",
+        "jsonBody": "={\n  \"url\": \"{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK4\"].json[\"url_final\"] }}\"\n}",
         "options": {}
       },
       "id": "160095bd-ccdc-417e-b80d-100ce31fbb4d",

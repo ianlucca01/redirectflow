@@ -25,14 +25,18 @@ intermitente.
   vez.
 
 ### 2 — Link errado / link de outro grupo (espelhamento)
-- **Causa:** havia duas seleções de link concorrentes. O roteamento usava o
-  link do AI (`DESENCURTADOR_DE_LINK1`), mas o branch do Mercado Livre
-  (`puppeter`) processava um link diferente vindo do heurístico
-  `Code in JavaScript7` (`DESENCURTADOR_DE_LINK4`). Em promoções espelhadas (com
-  vários links na legenda) os dois divergiam e o produto/link errado era enviado.
-- **Fix:** `puppeter` passou a usar `DESENCURTADOR_DE_LINK1` — o mesmo link que
-  o `Switch` roteou. A limpeza determinística do item 1 também remove links de
-  terceiros que sobravam no texto.
+- **Causa:** o branch do Mercado Livre (`puppeter`) usava o link do extrator
+  heurístico `Code in JavaScript7` (`DESENCURTADOR_DE_LINK4`), que em promoções
+  espelhadas (vários links na legenda) podia pegar um link de outro grupo.
+- **Tentativa revertida:** chegamos a apontar o `puppeter` para
+  `DESENCURTADOR_DE_LINK1` (o link escolhido pelo AI), mas isso causou
+  regressão — o link do AI vinha instável/vazio e o desencurtador devolvia uma
+  página padrão (sempre o mesmo produto), fazendo TODAS as ofertas de ML saírem
+  com o mesmo link. Por isso o `puppeter` foi revertido para
+  `DESENCURTADOR_DE_LINK4` (comportamento estável original).
+- **Pendente:** tratar o bug do espelhamento de forma mais robusta no próprio
+  `Code in JavaScript7` (rejeitar links de grupo/Telegram/WhatsApp antes de
+  escolher o link de compra), em vez de trocar a fonte do link.
 
 ### 4 — Link de resgate da Shopee quase nunca enviado
 - **Causa:** dois problemas de fiação. (a) O branch dedicado de cupom
