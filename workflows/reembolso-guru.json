@@ -1,0 +1,223 @@
+{
+  "name": "Reembolso - Digital Guru Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "reembolso",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d2d76157-be97-4b42-872f-824f1de5786f",
+      "name": "Webhook",
+      "webhookId": "f7a512d2-1d74-431d-bf02-cad7836d52d8"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "977d8203-6eb2-49e0-b733-e7411d434215",
+              "leftValue": "={{ $json.body.status }}",
+              "rightValue": "refunded",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "ea9e6754-7e30-44d8-9e61-47cef968e250",
+      "name": "É reembolso?"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "usuarios",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "email",
+              "keyValue": "={{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"contact\"][\"email\"] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        432,
+        -96
+      ],
+      "id": "75b6cf90-af4b-44a5-969e-7dca1382de0c",
+      "name": "Get a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "assinaturas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $item(\"0\").$node[\"Get a row\"].json[\"id\"] }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "data_fim",
+              "fieldValue": "={{ $now.format('yyyy-MM-dd HH:mm:ss.SSS') }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "inative"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        640,
+        -96
+      ],
+      "id": "54d1c154-0d4a-4e7c-8245-d86e2c407b7d",
+      "name": "Update a row",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "É reembolso?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "É reembolso?": {
+      "main": [
+        [
+          {
+            "node": "Get a row",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Get a row": {
+      "main": [
+        [
+          {
+            "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {
+    "Webhook": [
+      {
+        "headers": {
+          "host": "n8n.redirectflow.com.br",
+          "content-type": "application/json",
+          "user-agent": "Guru-Webhook",
+          "x-request-id": "req_2f1c9a4b7e"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "api_token": "sua_api_token_aqui",
+          "webhook_type": "transaction",
+          "id": "b32a4e4d-b71d-4e72-89aa-5de2ff109548",
+          "status": "refunded",
+          "last_status": "approved",
+          "created_at": "2026-02-27 00:21:00",
+          "updated_at": "2026-02-28 00:21:00",
+          "dates": {
+            "created_at": 1740615660,
+            "confirmed_at": 1740615700,
+            "canceled_at": 1740702060,
+            "ordered_at": 1740615660
+          },
+          "product": {
+            "id": "41216c20-8a88-4a08-9724-64586b18afd3",
+            "marketplace_id": "41216c20-8a88-4a08-9724-64586b18afd3",
+            "name": "Example product",
+            "type": "subscription"
+          },
+          "payment": {
+            "method": "credit_card",
+            "gateway": "guru",
+            "currency": "BRL",
+            "total": 79.33,
+            "refuse_reason": null
+          },
+          "contact": {
+            "id": "c-379d1e0c-7956",
+            "name": "John Doe",
+            "email": "johndoe@example.com",
+            "phone_number": "+22062452487",
+            "phone_local_code": "22",
+            "doc": "86877283814313"
+          },
+          "subscription": {
+            "id": "400a151c-1395-40d5-b590-4fb1cf15983d",
+            "internal_id": "400a151c-1395-40d5-b590-4fb1cf15983d",
+            "charged_times": 1,
+            "charged_every_days": 7,
+            "started_at": "2026-02-24 00:21:42",
+            "last_status": "canceled"
+          }
+        },
+        "webhookUrl": "https://n8n.redirectflow.com.br/webhook/reembolso",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d3c3ae74e3b5a400ab6b60411c4de9ee710f1877f4609a2dc7b61fe2cfaadff"
+  }
+}
