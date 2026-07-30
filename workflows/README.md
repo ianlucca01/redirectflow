@@ -19,7 +19,29 @@ Webhook (POST /reembolso)
         │
         ▼
    Update a row (assinaturas → data_fim = ontem, status = "ativo")
+        │
+        ├▶ Buscar instâncias ─▶ Apagar instância na uazapi ─▶ Apagar instâncias (BD)
+        ├▶ Apagar grupos (BD)
+        └▶ Apagar chaves API (BD)
 ```
+
+### Limpeza de dados no reembolso
+
+Além de vencer a assinatura, o fluxo remove os recursos do cliente:
+
+1. **Apagar instância na uazapi** — `DELETE {api_url}/instance` com o header
+   `token` da própria instância (dados lidos de `instancias_whatsapp`).
+   Derruba a sessão de WhatsApp no servidor uazapi, liberando recursos.
+   O nó está com "continue on error": se a instância já não existir na
+   uazapi, a limpeza do banco continua mesmo assim.
+2. **Apagar instâncias (BD)** — remove as linhas de `instancias_whatsapp`
+   (o histórico em `disparos_log` é preservado: a FK usa SET NULL).
+3. **Apagar grupos (BD)** — remove `grupos_whatsapp` do usuário.
+4. **Apagar chaves API (BD)** — remove `chaves_api` do usuário.
+
+> A exclusão é definitiva e ocorre apenas no caminho de reembolso.
+> Se o cliente recomprar, precisará reconectar o WhatsApp e recadastrar
+> as chaves — comportamento intencional.
 
 > **Por que status "ativo" com data vencida?** Testado na prática: a tela de
 > bloqueio total do painel ("sua assinatura expirou") só aparece quando

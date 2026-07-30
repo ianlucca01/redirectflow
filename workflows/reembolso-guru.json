@@ -118,6 +118,151 @@
           "name": "Supabase account"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "instancias_whatsapp",
+        "returnAll": true,
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $item(\"0\").$node[\"Get a row\"].json[\"id\"] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -208
+      ],
+      "id": "4a0d793d-48ff-476b-9946-0661940b85ff",
+      "name": "Buscar instâncias",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "={{ $json.api_url }}/instance",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1056,
+        -208
+      ],
+      "id": "1fedcbd4-88bf-4faa-9582-aa3a62416b2d",
+      "name": "Apagar instância na uazapi",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "instancias_whatsapp",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $item(\"0\").$node[\"Get a row\"].json[\"id\"] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -208
+      ],
+      "id": "be5aa180-8194-40d3-bbcd-ebc2b1ce041b",
+      "name": "Apagar instâncias (BD)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "grupos_whatsapp",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $item(\"0\").$node[\"Get a row\"].json[\"id\"] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        848,
+        -64
+      ],
+      "id": "2fcc7d63-3d7e-4232-a375-e8ee76a66fee",
+      "name": "Apagar grupos (BD)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "tableId": "chaves_api",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $item(\"0\").$node[\"Get a row\"].json[\"id\"] }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        848,
+        80
+      ],
+      "id": "977d8203-6eb2-49e0-b733-e7411d434216",
+      "name": "Apagar chaves API (BD)",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
     }
   ],
   "connections": {
@@ -149,6 +294,49 @@
         [
           {
             "node": "Update a row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update a row": {
+      "main": [
+        [
+          {
+            "node": "Buscar instâncias",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apagar grupos (BD)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Apagar chaves API (BD)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar instâncias": {
+      "main": [
+        [
+          {
+            "node": "Apagar instância na uazapi",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apagar instância na uazapi": {
+      "main": [
+        [
+          {
+            "node": "Apagar instâncias (BD)",
             "type": "main",
             "index": 0
           }
