@@ -19,7 +19,16 @@ Webhook (POST /reembolso)
         │
         ▼
    Update a row (assinaturas → data_fim = agora, status = "inative")
+        │
+        ▼
+   Desativar usuário (usuarios → ativo = false)
 ```
+
+> O passo **"Desativar usuário"** é o que trava o painel de fato: a plataforma
+> libera/bloqueia as funcionalidades com base no campo booleano
+> `usuarios.ativo`, não apenas no status da assinatura. Para **reativar** um
+> cliente (nova compra/renovação), é preciso voltar `usuarios.ativo = true`
+> além de reativar a assinatura.
 
 ## O que mudou em relação ao webhook antigo (Kiwify)
 
