@@ -18,17 +18,18 @@ Webhook (POST /reembolso)
    Get a row  (usuarios, busca por contact.email)
         │
         ▼
-   Update a row (assinaturas → data_fim = agora, status = "inative")
-        │
-        ▼
-   Desativar usuário (usuarios → ativo = false)
+   Update a row (assinaturas → data_fim = ontem, status = "ativo")
 ```
 
-> O passo **"Desativar usuário"** é o que trava o painel de fato: a plataforma
-> libera/bloqueia as funcionalidades com base no campo booleano
-> `usuarios.ativo`, não apenas no status da assinatura. Para **reativar** um
-> cliente (nova compra/renovação), é preciso voltar `usuarios.ativo = true`
-> além de reativar a assinatura.
+> **Por que status "ativo" com data vencida?** Testado na prática: a tela de
+> bloqueio total do painel ("sua assinatura expirou") só aparece quando
+> `usuarios.ativo = true` **e** `assinaturas.status = 'ativo'` **e**
+> `data_fim` está no passado — é assim que a plataforma modela uma assinatura
+> **vencida**. Marcar o status como "inative"/"inativo" cai em outro caminho
+> do código que mostra apenas o banner, sem travar as funcionalidades.
+> O `data_fim` é gravado como ontem (now - 1 dia) para garantir o vencimento
+> mesmo que a comparação seja apenas por data.
+> Para **reativar** (renovação), basta gravar um novo `data_fim` futuro.
 
 ## O que mudou em relação ao webhook antigo (Kiwify)
 
