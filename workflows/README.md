@@ -63,6 +63,17 @@ disparado para outros status ou receba o teste/ping da Guru.
 - **`pinData`**: o nó Webhook vem com um exemplo de payload de reembolso da Guru
   para você testar (**Execute Workflow**) sem precisar de um reembolso real.
 
+## Validação contra a documentação oficial
+
+Estrutura conferida contra o exemplo oficial de payload
+(`api.docs.digitalmanager.guru/webhooks-vendas`, fornecido pelo suporte da Guru):
+
+- `contact.email` → e-mail do cliente ✅
+- `status` (raiz) → status da transação; `refunded` = Reembolsada ✅
+  (`requested_refund` = Reembolso solicitado, caso queira tratar no futuro)
+- `webhook_type: "transaction"` ✅
+- `api_token` → chave para validar a origem do POST ✅
+
 ## Recomendações de robustez (opcional)
 
 - **Validar assinatura do webhook**: a Guru envia um `api_token`/assinatura.
