@@ -1,0 +1,1258 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "gerar-oferta-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -496,
+        0
+      ],
+      "id": "bdd9a97b-cc30-4c75-a8d1-5e038bd663cc",
+      "name": "Webhook",
+      "webhookId": "83e26fa8-5e52-4d32-befe-f727d0e48abc"
+    },
+    {
+      "parameters": {
+        "url": "=http://89.116.225.101:3052/desencurtar?url={{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"link_produto\"] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -272,
+        0
+      ],
+      "id": "daee5eb2-18a2-40bb-95ab-f0a1828d096b",
+      "name": "DESENCURTADOR_DE_LINK5",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════\n// IDENTIFICA PLATAFORMA\n// FIX: os encurtadores do Mercado Livre (meli.la / mlb.la) NAO contem\n// a string \"mercadolivre.com\", entao caiam em \"outra\" e o Switch\n// descartava o item em silencio -> o webhook nunca respondia e o\n// front caia no texto generico (\"Produto Especial\").\n// ═══════════════════════════════════════════════════════════════\n\n// Fonte do link: prioriza a URL ja desencurtada; se o :3052 falhou\n// (onError=continueRegularOutput deixa passar {error:...}), usa o link cru.\nlet link = '';\ntry { link = $('DESENCURTADOR_DE_LINK5').first().json.url_final || ''; } catch (e) {}\nif (!link) {\n  try { link = $('Webhook').first().json.body.link_produto || ''; } catch (e) {}\n}\nlink = String(link || '').trim();\n\nif (!link) {\n  throw new Error('Nenhum link utilizavel (desencurtador e webhook vazios)');\n}\n\nconst l = link.toLowerCase();\n\nconst SHOPEE = ['shopee.com', 's.shopee', 'shp.ee'];\nconst ML     = ['mercadolivre.com', 'mercadolibre.com', 'meli.la', 'mlb.la'];\nconst AMAZON = ['amazon.com', 'amzn.to', 'amzn.eu', 'amzn.asia'];\n\nlet plataforma = 'outra';\nif (SHOPEE.some(function (d) { return l.indexOf(d) !== -1; })) {\n  plataforma = 'shopee';\n} else if (ML.some(function (d) { return l.indexOf(d) !== -1; })) {\n  plataforma = 'mercadolivre';\n} else if (AMAZON.some(function (d) { return l.indexOf(d) !== -1; })) {\n  plataforma = 'amazon';\n}\n\n// Sinaliza link do ML que continua encurtado: o :3060 e o :3099 precisam\n// da URL final, entao vale registrar no log quando o desencurtador nao abriu.\nconst aindaCurto = /meli\\.la|mlb\\.la|\\/sec\\//i.test(link);\nif (plataforma === 'mercadolivre' && aindaCurto) {\n  console.warn('ML: link ainda encurtado apos o :3052 -> ' + link);\n}\n\nreturn { plataforma: plataforma, link_original: link, ainda_curto: aindaCurto };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        0
+      ],
+      "id": "7bc1a059-9d07-4ea8-b91f-50ac572f3f4c",
+      "name": "IDENTIFICA PLATAFORMA"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"plataforma\"] }}",
+                    "rightValue": "mercadolivre",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "64124a33-f9e0-49e0-9ec0-aa76371ba080"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "mercadolivre"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "d474465a-90d3-4dce-be98-d73f62a9a590",
+                    "leftValue": "={{ $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"plataforma\"] }}",
+                    "rightValue": "amazon",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "amazon"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "fd3f22ba-92cb-435a-ba5a-38e842b96a4d",
+                    "leftValue": "={{ $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"plataforma\"] }}",
+                    "rightValue": "shopee",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "shopee"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra",
+          "renameFallbackOutput": "desconhecida"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        176,
+        -16
+      ],
+      "id": "8740dca5-365b-4eaf-95fc-c172efe01bfa",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "jsCode": "// FIX: antes o Switch nao tinha saida de fallback. Qualquer plataforma\n// nao reconhecida era descartada sem resposta e a requisicao do front\n// ficava pendurada ate dar timeout.\nlet link = '';\ntry { link = $('IDENTIFICA PLATAFORMA').first().json.link_original || ''; } catch (e) {}\n\nreturn {\n  json: {\n    success: false,\n    erro: 'Plataforma nao suportada ou link nao desencurtado: ' + link,\n    oferta: '',\n    imagem: ''\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        176
+      ],
+      "id": "1f0a6c22-4d61-4a7e-9b3f-2c9e7a5d1b40",
+      "name": "Erro Plataforma"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        640,
+        176
+      ],
+      "id": "6b1d8e33-9c72-4f18-8a4d-3f7b2c6e9a51",
+      "name": "Respond Erro Plataforma"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://89.116.225.101:3060/extrair-mlb",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"link_original\"] }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        512,
+        -240
+      ],
+      "id": "2195fcc5-24c9-4d86-9db7-cc4bfdf117cd",
+      "name": "puppeter4",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet link = '';\n\n// 1) Preferido: URL limpa do puppeteer (:3060)\ntry { const ml = $('puppeter4').first().json; if (ml && ml.url_limpa) link = ml.url_limpa; } catch (e) {}\n\n// FALLBACK (fix 06/08): puppeter4 vai p/ VPS2 e o ML geo-bloqueia IP US -> url_limpa vazio.\ntry { if (!link) { const dz = $('DESENCURTADOR_DE_LINK5').first().json; if (dz && dz.url_final) link = dz.url_final; } } catch (e) {}\n\n// 3) Ultimo recurso: link cru do webhook\ntry { if (!link) { const wb = $('Webhook').first().json; if (wb && wb.body && wb.body.link_produto) link = wb.body.link_produto; } } catch (e) {}\n\n// FIX: antes seguia com link vazio e todo o resto da cadeia ML falhava mudo.\nif (!link) {\n  throw new Error('Mercado Livre: nenhum link utilizavel apos puppeter4 / desencurtador / webhook');\n}\n\nreturn [{ json: { link: link, tom: item.tom || 'normal' } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        736,
+        -240
+      ],
+      "id": "1a7231e9-24df-4270-b536-ae76a24d3a02",
+      "name": "Code in JavaScript14"
+    },
+    {
+      "parameters": {
+        "url": "={{ $item(\"0\").$node[\"Code in JavaScript14\"].json[\"link\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "pt-BR,pt;q=0.9"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        960,
+        -240
+      ],
+      "id": "64fc4d05-3d5f-48ba-8644-8efafb733a04",
+      "name": "HTTP fetch ML page",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "imagem",
+              "cssSelector": "meta[property=\"og:image\"]",
+              "returnValue": "attribute",
+              "attribute": "content"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1184,
+        -240
+      ],
+      "id": "d9ad4c59-b029-4e20-8443-67ad772d7209",
+      "name": "HTML og:image",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ml-link-01",
+              "name": "link",
+              "value": "={{ $item(\"0\").$node[\"Code in JavaScript14\"].json[\"link\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "ml-tom-01",
+              "name": "tom",
+              "value": "={{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"tom\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "ml-img-01",
+              "name": "imagem",
+              "value": "={{ $item(\"0\").$node[\"HTML og:image\"].json[\"imagem\"] || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1408,
+        -240
+      ],
+      "id": "92c33a34-2ae2-4dc0-a8b2-25058faf1f9f",
+      "name": "Edit Fields6"
+    },
+    {
+      "parameters": {
+        "url": "={{ $item(\"0\").$node[\"Edit Fields6\"].json[\"imagem\"] || 'https://http.cat/200.jpg' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1632,
+        -240
+      ],
+      "id": "2cb1f7e5-6949-4d65-98c1-c5ca58c9f876",
+      "name": "HTTP img ML2",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "borderColor": "#FFFFFF",
+        "options": {
+          "format": "jpeg"
+        }
+      },
+      "type": "n8n-nodes-base.editImage",
+      "typeVersion": 1,
+      "position": [
+        1856,
+        -240
+      ],
+      "id": "088a8245-6bb6-47cd-8673-7c30659db8e0",
+      "name": "Edit Image ML2",
+      "alwaysOutputData": true,
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "binaryToPropery",
+        "options": {
+          "encoding": "base64"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        2080,
+        -240
+      ],
+      "id": "e476aa41-0bbb-472d-ae2f-28dc980a3c86",
+      "name": "Extract File ML2",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://89.116.225.101:3099/api/extrair-produto",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"url\": \"{{ $item(\"0\").$node[\"Edit Fields6\"].json[\"link\"] }}\"}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2304,
+        -240
+      ],
+      "id": "40efd449-b204-4463-84ec-9629b0269437",
+      "name": "HTTP Request4",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════\n// VALIDA PRODUTO ML\n// FIX: quando o extrator (:3099) devolvia vazio, o AI Agent recebia\n// campos em branco e copiava o template literal (\"[Nome do Produto]\",\n// \"[PRECO_ATUAL]\"). O guard do Code in JavaScript15 bloqueava e o\n// usuario recebia success:false sem nenhuma explicacao.\n// Agora a falta de dados e detectada ANTES da IA e vira erro explicito.\n// ═══════════════════════════════════════════════════════════════\n\nlet p = {};\ntry { p = $('HTTP Request4').first().json || {}; } catch (e) {}\n\nfunction num(v) {\n  if (v === null || v === undefined || v === '') return null;\n  let s = String(v).replace(/[^\\d.,-]/g, '');\n  // 1.234,56 -> 1234.56   |   1234.56 fica como esta\n  if (/,\\d{1,2}$/.test(s)) s = s.replace(/\\./g, '').replace(',', '.');\n  else s = s.replace(/,/g, '');\n  const n = parseFloat(s);\n  return isFinite(n) ? n : null;\n}\n\nfunction brl(n) {\n  if (n === null) return '';\n  // 1234.5 -> R$1.234,50 (separador de milhar + virgula decimal)\n  const partes = n.toFixed(2).split('.');\n  const inteiro = partes[0].replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.');\n  return 'R$' + inteiro + ',' + partes[1];\n}\n\nconst titulo        = String(p.titulo || p.title || p.nome || '').trim();\nconst precoAtual    = num(p.precoAtual !== undefined ? p.precoAtual : (p.preco !== undefined ? p.preco : p.price));\nconst precoOriginal = num(p.precoOriginal !== undefined ? p.precoOriginal : p.precoDe);\nconst descricao     = String(p.descricao || p.description || '').trim();\n\nlet imagem = String(p.imagem || p.image || '').trim();\nif (!imagem) {\n  try { imagem = $('Edit Fields6').first().json.imagem || ''; } catch (e) {}\n}\n\nlet link = '';\ntry { link = $('Edit Fields6').first().json.link || ''; } catch (e) {}\n\nlet tom = 'padrao';\ntry { tom = $('Webhook').first().json.body.tom || 'padrao'; } catch (e) {}\n\n// Desconto: usa o do extrator, senao calcula a partir dos precos.\nlet desconto = String(p.desconto || '').trim();\nif (!desconto && precoOriginal && precoAtual && precoOriginal > precoAtual) {\n  desconto = Math.round((1 - precoAtual / precoOriginal) * 100) + '%';\n}\n\n// Sem titulo OU sem preco a oferta nao tem como ser honesta -> nao chama a IA.\nconst dados_ok = !!(titulo && precoAtual);\nif (!dados_ok) {\n  console.error('ML: extrator :3099 sem dados uteis para ' + link + ' -> ' + JSON.stringify(p).slice(0, 300));\n}\n\nreturn {\n  json: {\n    dados_ok: dados_ok,\n    titulo: titulo,\n    preco_atual: brl(precoAtual),\n    preco_original: precoOriginal && precoAtual && precoOriginal > precoAtual ? brl(precoOriginal) : '',\n    desconto: desconto,\n    descricao: descricao,\n    imagem: imagem,\n    link: link,\n    tom: tom\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        -240
+      ],
+      "id": "a3c7f1d9-5b28-4e6a-9c14-7d0b8e2f6a93",
+      "name": "Valida Produto ML"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "ml-dados-ok-01",
+              "leftValue": "={{ $json.dados_ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2688,
+        -240
+      ],
+      "id": "c5e9b207-8a34-41d6-b7f2-91ac4e6d3b08",
+      "name": "IF Dados ML"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um especialista em copywriting para ofertas de produtos em grupos de WhatsApp no Brasil. Crie um texto de oferta com base nos dados fornecidos abaixo.\n\nREGRAS GERAIS:\n1. Use SOMENTE os dados fornecidos. NÃO invente nada\n2. Texto puro com emojis para WhatsApp\n3. Use *negrito* (asteriscos) para destacar: preço final, nome do cupom, desconto. Máximo 3-4 trechos em negrito\n4. Se houver preço original, mostre riscado com ~ (ex: ~R$103,90~)\n5. Termine SEMPRE com \"Compre aqui: \" + o link\n6. Espaçamento entre blocos\n7. Máximo 10 linhas\n8. Primeira letra de cada linha sempre MAIÚSCULA\n9. NUNCA escreva os rótulos entre colchetes deste prompt no texto final. Substitua sempre pelos valores reais. Se o campo \"Preço original\" vier vazio, OMITA a linha do preço riscado por completo\n\nREGRAS DE CUPOM:\n- Se houver cupom, CALCULE o preço final: preço atual - (preço atual × porcentagem / 100)\n- Se o desconto calculado for MAIOR que valor_max, use valor_max como desconto\n- COM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 Por *R$PREÇO FINAL COM CUPOM*\n  🏷️ Use o cupom: *NOME*\n- SEM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 POR *PRECO_ATUAL*\n\nREGRAS POR TOM:\npadrao: ✅ Nome do produto \\n\\n 💰 De ~PRECO_ORIGINAL~ \\n 🔥 POR *PRECO_ATUAL* \\n\\n Compre aqui: link — sem criatividade extra\nmaes: título 👶🧸💕, carinhoso, foco bebê/mãe\npet: título 🐾🐶🐱, amoroso, foco animal\nbeleza: título 💅✨🌸, aspiracional\nhomens: título ⚡🔥💪, direto\nfitness: título 💪🏋️🔥, motivacional\ncasa: título 🏠🍳✨, prático\ntech: título 📱💻⚡, informativo\n\nResponda APENAS com o texto da oferta.\n\n---\nDADOS:\nTítulo: {{ $item(\"0\").$node[\"Valida Produto ML\"].json[\"titulo\"] }}\nPreço atual: {{ $item(\"0\").$node[\"Valida Produto ML\"].json[\"preco_atual\"] }}\nPreço original: {{ $item(\"0\").$node[\"Valida Produto ML\"].json[\"preco_original\"] }}\nDesconto: {{ $item(\"0\").$node[\"Valida Produto ML\"].json[\"desconto\"] }}\nDescrição: {{ $item(\"0\").$node[\"Valida Produto ML\"].json[\"descricao\"] }}\nLINK: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"link_produto\"] }}\nTOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"tom\"] }}\nCUPOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"nome\"] || \"nenhum\") : \"nenhum\" }}\nCUPOM PORCENTAGEM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"porcentagem\"] || \"0\") : \"0\" }}%\nCUPOM VALOR MÁXIMO: R${{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"valor_max\"] || \"sem limite\") : \"sem limite\" }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2896,
+        -352
+      ],
+      "id": "27031b6b-7660-4264-b330-e4faa2089e86",
+      "name": "AI Agent9",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2896,
+        -192
+      ],
+      "id": "c79a22df-d77f-4a67-b5bc-f1db4e66c016",
+      "name": "OpenRouter Chat Model9",
+      "credentials": {
+        "openRouterApi": {
+          "id": "LvtiDMPFLJ381Gv3",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const oferta = $item(\"0\").$node[\"AI Agent9\"].json[\"output\"] || '';\n\nlet imagem = '';\n\n// 1) Principal: imagem ja normalizada (extrator :3099 -> og:image)\ntry {\n  const v = $('Valida Produto ML').first().json;\n  if (v && v.imagem) imagem = v.imagem;\n} catch (e) {}\n\n// 2) Fallback: base64 da og:image (caminho antigo)\nif (!imagem) {\n  try {\n    const b64 = $('Extract File ML2').first().json.data;\n    if (b64 && typeof b64 === 'string' && b64.length > 100) {\n      imagem = 'data:image/jpeg;base64,' + b64;\n    }\n  } catch (e) {}\n}\n\n// FIX 22/08: guarda anti-template. O prompt usava 'preco original'/'preco atual'\n// como placeholder ambiguo e o modelo as vezes copiava o template literal.\nfunction _saneia(txt) {\n  var t = String(txt || '');\n  var tituloQuebrado = /\\[Nome do Produto\\]/i.test(t)\n    || /^\\s*T[íi]tulo\\s*:?\\s*$/mi.test(t)\n    || /^\\s*\\*{0,2}\\s*Produto\\s*\\*{0,2}\\s*$/mi.test(t);\n  if (tituloQuebrado) return { ok: false, motivo: 'template nao preenchido (titulo)', texto: t };\n  var phPreco = /\\[PRECO_ORIGINAL\\]|\\[PRECO_ATUAL\\]|preço original|preço atual|preco original|preco atual/i.test(t);\n  var mDe  = t.match(/De\\s*~\\s*R?\\$?\\s*([\\d.,]+)\\s*~/i);\n  var mPor = t.match(/\\bPor\\b[^*]*\\*\\s*R?\\$?\\s*([\\d.,]+)\\s*\\*/i);\n  var semDesconto = !!(mDe && mPor && mDe[1].trim() === mPor[1].trim());\n  if (phPreco || semDesconto) {\n    t = t.split('\\n').filter(function (l) {\n      return !(/De\\s*~/i.test(l) || /\\bPor\\b[^*]*\\*/i.test(l));\n    }).join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n  }\n  return { ok: true, texto: t, ajustado: (phPreco || semDesconto) };\n}\n\nvar _g = _saneia(oferta);\nif (!_g.ok) {\n  console.error('OFERTA BLOQUEADA: ' + _g.motivo);\n  return { json: { success: false, erro: _g.motivo, oferta: '', imagem: '' } };\n}\nif (_g.ajustado) console.warn('linha de preco removida (placeholder ou De=POR)');\nreturn { json: { success: true, oferta: _g.texto, imagem: imagem } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3120,
+        -352
+      ],
+      "id": "677f572d-8250-4f6a-ac56-96eda4134135",
+      "name": "Code in JavaScript15"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3344,
+        -352
+      ],
+      "id": "b70814ca-7504-41ff-b64f-53eba287bd4e",
+      "name": "Respond to Webhook7"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Sem titulo/preco o extrator do ML nao entregou nada utilizavel.\n// Responde explicitamente em vez de deixar a IA inventar ou o webhook pendurar.\nlet link = '';\ntry { link = $('Valida Produto ML').first().json.link || ''; } catch (e) {}\n\nreturn {\n  json: {\n    success: false,\n    erro: 'Nao foi possivel ler os dados do produto no Mercado Livre (extrator :3099 sem titulo/preco). Link: ' + link,\n    oferta: '',\n    imagem: ''\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2896,
+        -96
+      ],
+      "id": "d81f4a56-3e07-4b29-8c65-0a2f7d1e9b34",
+      "name": "Erro Dados ML"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        3120,
+        -96
+      ],
+      "id": "f27b6c40-91d5-4a83-b0e6-5c8a3f1d7e26",
+      "name": "Respond Erro ML"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════\n// CREATORS API - BUSCAR TOKEN OAUTH 2.0 (v3.1 LWA)\n// ═══════════════════════════════════════════════════════════════\n\nconst credentialId = $env.AMAZON_CLIENT_ID;\nconst credentialSecret = $env.AMAZON_CLIENT_SECRET;\n\nif (!credentialId || !credentialSecret) {\n  throw new Error('AMAZON_CLIENT_ID / AMAZON_CLIENT_SECRET nao definidos no ambiente do n8n');\n}\n\nconst tokenUrl = 'https://api.amazon.com/auth/o2/token';\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: tokenUrl,\n  headers: {\n    'Content-Type': 'application/x-www-form-urlencoded'\n  },\n  body: 'grant_type=client_credentials'\n    + '&client_id=' + encodeURIComponent(credentialId)\n    + '&client_secret=' + encodeURIComponent(credentialSecret)\n    + '&scope=creatorsapi::default',\n  returnFullResponse: false,\n  json: true\n});\n\nif (!response.access_token) {\n  throw new Error('Falha ao obter token OAuth: ' + JSON.stringify(response));\n}\n\nreturn {\n  json: {\n    access_token: response.access_token,\n    token_type: response.token_type,\n    expires_in: response.expires_in\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        944,
+        0
+      ],
+      "id": "5cdd4e14-5ecb-4d11-8d67-f9962458868a",
+      "name": "Token OAuth Amazon"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ═══════════════════════════════════════════════════════════════\n// CREATORS API - MONTAR REQUEST GetItems (v3.1 LWA)\n// ═══════════════════════════════════════════════════════════════\nconst accessToken = $item(\"0\").$node[\"Token OAuth Amazon\"].json[\"access_token\"];\nconst partnerTag = 'descontovipon-20';\nconst urlFinal = $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"link_original\"];\n\n// Extrair ASIN do link da Amazon\nconst asinMatch = urlFinal.match(/\\/dp\\/([A-Z0-9]{10})|\\/gp\\/product\\/([A-Z0-9]{10})/);\nconst asin = asinMatch ? (asinMatch[1] || asinMatch[2]) : null;\nif (!asin) {\n  throw new Error('ASIN não encontrado no link: ' + urlFinal);\n}\n\n// FIX: o marketplace estava gravado como markdown ('[www.amazon.com.br](...)'),\n// o que a Creators API rejeita. Tem que ser o host puro.\nconst MARKETPLACE = 'www.amazon.com.br';\n\nconst url = 'https://creatorsapi.amazon/catalog/v1/getItems';\nconst payload = JSON.stringify({\n  itemIds: [asin],\n  itemIdType: 'ASIN',\n  marketplace: MARKETPLACE,\n  partnerTag: partnerTag,\n  resources: [\n    'itemInfo.title',\n    'offersV2.listings.price',\n    'images.primary.large'\n  ]\n});\nreturn {\n  json: {\n    url: url,\n    method: 'POST',\n    headers: {\n      'Content-Type': 'application/json',\n      'Authorization': 'Bearer ' + accessToken,\n      'x-marketplace': MARKETPLACE\n    },\n    body: payload\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "be323ba4-3db2-4f8c-8120-6c15e7c4e6c9",
+      "name": "credenciais amazon1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $item(\"0\").$node[\"credenciais amazon1\"].json[\"url\"] }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "={{ $item(\"0\").$node[\"credenciais amazon1\"].json[\"headers\"][\"Content-Type\"] }}"
+            },
+            {
+              "name": "Authorization",
+              "value": "={{ $item(\"0\").$node[\"credenciais amazon1\"].json[\"headers\"][\"Authorization\"] }}"
+            },
+            {
+              "name": "x-marketplace",
+              "value": "={{ $item(\"0\").$node[\"credenciais amazon1\"].json[\"headers\"][\"x-marketplace\"] }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $item(\"0\").$node[\"credenciais amazon1\"].json[\"body\"] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "98e936a5-4bcc-48a8-a2c3-2a86f319cf08",
+      "name": "APIAMAZON"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet link = '';\nlet imagem = '';\n\n// AMAZON\ntry {\n  const amz = $('APIAMAZON').first().json;\n  if (amz && amz.itemsResult && amz.itemsResult.items && amz.itemsResult.items[0]) {\n    const it = amz.itemsResult.items[0];\n    if (it.detailPageURL) link = it.detailPageURL;\n    if (it.images && it.images.primary && it.images.primary.large && it.images.primary.large.url) {\n      imagem = it.images.primary.large.url;\n    }\n  }\n} catch (e) {}\n\n// Fallback de link: URL desencurtada\nif (!link) {\n  try { const dz = $('IDENTIFICA PLATAFORMA').first().json; if (dz && dz.link_original) link = dz.link_original; } catch (e) {}\n}\n\nreturn {\n  json: {\n    link: link,\n    imagem: imagem,\n    tom: item.tom || 'normal'\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "fa73e30e-0ce1-42e7-839b-557ef851be17",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "266c62f7-2ec6-4268-abf2-db4a3e44bffa",
+              "name": "link",
+              "value": "={{ $item(\"0\").$node[\"Code in JavaScript\"].json[\"link\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "e5c3f5d1-2089-46ac-9d6b-939376547da8",
+              "name": "tom",
+              "value": "={{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"tom\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "2f19df9f-445b-4629-8c42-f5970f9f2460",
+              "name": "imagem",
+              "value": "={{ $item(\"0\").$node[\"Code in JavaScript\"].json[\"imagem\"] }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "7df97f18-2317-4fa4-b0b2-8ae0633b07f9",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um especialista em copywriting para ofertas de produtos em grupos de WhatsApp no Brasil. Crie um texto de oferta com base nos dados fornecidos abaixo.\n\nREGRAS GERAIS:\n1. Use SOMENTE os dados fornecidos. NÃO invente nada\n2. Texto puro com emojis para WhatsApp\n3. Use *negrito* (asteriscos) para destacar: preço final, nome do cupom, desconto. Máximo 3-4 trechos em negrito\n4. Se houver preço original, mostre riscado com ~ (ex: ~R$103,90~)\n5. Termine SEMPRE com \"Compre aqui: \" + o link\n6. Espaçamento entre blocos\n7. Máximo 10 linhas\n8. Primeira letra de cada linha sempre MAIÚSCULA\n9. NUNCA escreva os rótulos entre colchetes deste prompt no texto final. Substitua sempre pelos valores reais. Se o campo \"Preço original\" vier vazio, OMITA a linha do preço riscado por completo\n\nREGRAS DE CUPOM:\n- Se houver cupom, CALCULE o preço final: preço atual - (preço atual × porcentagem / 100)\n- Se o desconto calculado for MAIOR que valor_max, use valor_max como desconto\n- COM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 Por *R$PREÇO FINAL COM CUPOM*\n  🏷️ Use o cupom: *NOME*\n- SEM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 POR *PRECO_ATUAL*\n\nREGRAS POR TOM:\npadrao: ✅ Nome do produto \\n\\n 💰 De ~PRECO_ORIGINAL~ \\n 🔥 POR *PRECO_ATUAL* \\n\\n Compre aqui: link — sem criatividade extra\nmaes: título 👶🧸💕, carinhoso, foco bebê/mãe\npet: título 🐾🐶🐱, amoroso, foco animal\nbeleza: título 💅✨🌸, aspiracional\nhomens: título ⚡🔥💪, direto\nfitness: título 💪🏋️🔥, motivacional\ncasa: título 🏠🍳✨, prático\ntech: título 📱💻⚡, informativo\n\nResponda APENAS com o texto da oferta.\n\n---\nDADOS DO PRODUTO:\nTítulo: {{ $item(\"0\").$node[\"APIAMAZON\"].json[\"itemsResult\"][\"items\"][\"0\"][\"itemInfo\"][\"title\"][\"displayValue\"] }}\nPreço atual: {{ $item(\"0\").$node[\"APIAMAZON\"].json[\"itemsResult\"][\"items\"][\"0\"][\"offersV2\"][\"listings\"][\"0\"][\"price\"][\"money\"][\"amount\"] }}\nPreço original: {{ $item(\"0\").$node[\"APIAMAZON\"].json[\"itemsResult\"][\"items\"][\"0\"][\"offersV2\"][\"listings\"][\"0\"][\"price\"][\"savingBasis\"][\"money\"][\"amount\"] }}\nDesconto: {{ $item(\"0\").$node[\"APIAMAZON\"].json[\"itemsResult\"][\"items\"][\"0\"][\"offersV2\"][\"listings\"][\"0\"][\"price\"][\"savings\"][\"percentage\"] }}\nLINK: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"link_produto\"] }}\nTOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"tom\"] }}\nCUPOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"nome\"] || \"nenhum\") : \"nenhum\" }}\nCUPOM PORCENTAGEM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"porcentagem\"] || \"0\") : \"0\" }}%\nCUPOM VALOR MÁXIMO: R${{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"valor_max\"] || \"sem limite\") : \"sem limite\" }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "e9bcae64-6829-4233-8165-9c4a22db90db",
+      "name": "AI Agent3",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        144
+      ],
+      "id": "e9d19c18-badc-4bc8-822d-d9108c1dd22d",
+      "name": "OpenRouter Chat Model3",
+      "credentials": {
+        "openRouterApi": {
+          "id": "LvtiDMPFLJ381Gv3",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const oferta = $item(\"0\").$node[\"AI Agent3\"].json[\"output\"] || '';\nconst imagem = $item(\"0\").$node[\"Edit Fields\"].json[\"imagem\"] || '';\n\n// FIX 22/08: guarda anti-template. O prompt usava 'preco original'/'preco atual'\n// como placeholder ambiguo e o modelo as vezes copiava o template literal.\nfunction _saneia(txt) {\n  var t = String(txt || '');\n  var tituloQuebrado = /\\[Nome do Produto\\]/i.test(t)\n    || /^\\s*T[íi]tulo\\s*:?\\s*$/mi.test(t)\n    || /^\\s*\\*{0,2}\\s*Produto\\s*\\*{0,2}\\s*$/mi.test(t);\n  if (tituloQuebrado) return { ok: false, motivo: 'template nao preenchido (titulo)', texto: t };\n  var phPreco = /\\[PRECO_ORIGINAL\\]|\\[PRECO_ATUAL\\]|preço original|preço atual|preco original|preco atual/i.test(t);\n  var mDe  = t.match(/De\\s*~\\s*R?\\$?\\s*([\\d.,]+)\\s*~/i);\n  var mPor = t.match(/\\bPor\\b[^*]*\\*\\s*R?\\$?\\s*([\\d.,]+)\\s*\\*/i);\n  var semDesconto = !!(mDe && mPor && mDe[1].trim() === mPor[1].trim());\n  if (phPreco || semDesconto) {\n    t = t.split('\\n').filter(function (l) {\n      return !(/De\\s*~/i.test(l) || /\\bPor\\b[^*]*\\*/i.test(l));\n    }).join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n  }\n  return { ok: true, texto: t, ajustado: (phPreco || semDesconto) };\n}\n\nvar _g = _saneia(oferta);\nif (!_g.ok) {\n  console.error('OFERTA BLOQUEADA: ' + _g.motivo);\n  return { json: { success: false, erro: _g.motivo, oferta: '', imagem: '' } };\n}\nif (_g.ajustado) console.warn('linha de preco removida (placeholder ou De=POR)');\nreturn { json: { success: true, oferta: _g.texto, imagem: imagem } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2592,
+        0
+      ],
+      "id": "ea5bc465-a716-4c0d-9cd0-6fd7f4492360",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2816,
+        0
+      ],
+      "id": "46da01c6-6b66-422b-9d29-58b714171384",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "url": "=http://89.116.225.101:3052/desencurtar?url={{ $item(\"0\").$node[\"IDENTIFICA PLATAFORMA\"].json[\"link_original\"] }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        944,
+        336
+      ],
+      "id": "9e17266f-fd4f-41b9-b521-9071c036a278",
+      "name": "DESENCURTADOR_DE_LINK",
+      "retryOnFail": true,
+      "maxTries": 5,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "chaves_api",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "keyValue": "={{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"user_id\"] }}"
+            },
+            {
+              "keyName": "plataforma",
+              "keyValue": "shopee"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1424,
+        336
+      ],
+      "id": "499f334a-65bd-4c74-8940-07eb11ae0581",
+      "name": "Buscar Chaves API",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst appId     = $item(\"0\").$node[\"Buscar Chaves API\"].json[\"shopee_affiliate_id\"];\nconst appSecret = $item(\"0\").$node[\"Buscar Chaves API\"].json[\"shopee_app_key\"];\n\nconst url   = $item(\"0\").$node[\"DESENCURTADOR_DE_LINK\"].json[\"url_final\"] || '';\nconst limpa = url.split('?')[0].split('#')[0];   // tira query/hash p/ não capturar número errado\n\nlet shopId = null, itemId = null;\n\n// 1) Formato atual: .../nome-do-produto-i.SHOPID.ITEMID\nlet m = limpa.match(/i\\.(\\d+)\\.(\\d+)/);\nif (m) { shopId = m[1]; itemId = m[2]; }\n\n// 2) Formato antigo/app: .../product/SHOPID/ITEMID\nif (!shopId) {\n  m = limpa.match(/\\/product\\/(\\d+)\\/(\\d+)/);\n  if (m) { shopId = m[1]; itemId = m[2]; }\n}\n\n// 3) Fallback: dois blocos numéricos longos\nif (!shopId) {\n  m = limpa.match(/(\\d{6,})[.\\/](\\d{6,})/);\n  if (m) { shopId = m[1]; itemId = m[2]; }\n}\n\n// FIX 22/08: distingue BLOQUEIO da Shopee de falha de parsing.\n// A /verify/traffic e a pagina anti-bot: nao existe produto nela.\nvar NAO_E_PRODUTO = [/\\/verify\\/traffic/i, /is_logged_in=false/i, /shopee\\.com\\.br\\/m\\//i,\n                     /cupom-de-desconto/i, /voucher-wallet/i, /shopee-coins/i, /\\/user\\//i];\nif (NAO_E_PRODUTO.some(function (re) { return re.test(url); })) {\n  throw new Error('Shopee bloqueou a requisicao (anti-bot / pagina nao-produto): ' + limpa.slice(0, 160));\n}\n\n// NUNCA seguir com id nulo — sem filtro a Shopee devolve produto aleatório\nif (!shopId || !itemId) {\n  throw new Error('Shopee: não consegui extrair shopId/itemId de: ' + url);\n}\n\nconst timestamp = Math.floor(Date.now() / 1000);\n\nconst payload = `{\"query\":\"{ productOfferV2(itemId: ${itemId}, shopId: ${shopId}) { nodes { itemId shopId productName offerLink imageUrl commissionRate price priceMin priceMax priceDiscountRate } } }\"}`;\n\nconst signature = crypto.createHash('sha256')\n  .update(appId + timestamp + payload + appSecret)\n  .digest('hex');\n\nreturn [{ json: {\n  authHeader: `SHA256 Credential=${appId}, Timestamp=${timestamp},Signature=${signature}`,\n  payload, itemId, shopId, timestamp\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1664,
+        336
+      ],
+      "id": "e98c6c47-2a8c-4741-8ac1-c5ea125cd4b6",
+      "name": "gera-assinatura"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://open-api.affiliate.shopee.com.br/graphql",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "={{ $json.authHeader }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ $json.payload }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1904,
+        336
+      ],
+      "id": "2ada41fa-e9c2-4b8a-8567-830b9accf8f8",
+      "name": "API SHOPEE"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Você é um especialista em copywriting para ofertas de produtos em grupos de WhatsApp no Brasil. Crie um texto de oferta com base nos dados fornecidos abaixo.\n\nREGRAS GERAIS:\n1. Use SOMENTE os dados fornecidos. NÃO invente nada\n2. Texto puro com emojis para WhatsApp\n3. Use *negrito* (asteriscos) para destacar: preço final, nome do cupom, desconto. Máximo 3-4 trechos em negrito\n4. Se houver preço original, mostre riscado com ~ (ex: ~R$103,90~)\n5. Termine SEMPRE com \"Compre aqui: \" + o link\n6. Espaçamento entre blocos\n7. Máximo 10 linhas\n8. Primeira letra de cada linha sempre MAIÚSCULA\n9. NUNCA escreva os rótulos entre colchetes deste prompt no texto final. Substitua sempre pelos valores reais. Se o campo \"Preço original\" vier vazio ou igual ao preço atual, OMITA a linha do preço riscado por completo\n\nREGRAS DE CUPOM:\n- Se houver cupom, CALCULE o preço final: preço atual - (preço atual × porcentagem / 100)\n- Se o desconto calculado for MAIOR que valor_max, use valor_max como desconto\n- COM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 Por *R$PREÇO FINAL COM CUPOM*\n  🏷️ Use o cupom: *NOME*\n- SEM CUPOM:\n  💰 De ~PRECO_ORIGINAL~\n  🔥 POR *PRECO_ATUAL*\n\nREGRAS POR TOM:\npadrao: ✅ Nome do produto \\n\\n 💰 De ~PRECO_ORIGINAL~ \\n 🔥 POR *PRECO_ATUAL* \\n\\n Compre aqui: link — sem criatividade extra\nmaes: título 👶🧸💕, carinhoso, foco bebê/mãe\npet: título 🐾🐶🐱, amoroso, foco animal\nbeleza: título 💅✨🌸, aspiracional\nhomens: título ⚡🔥💪, direto\nfitness: título 💪🏋️🔥, motivacional\ncasa: título 🏠🍳✨, prático\ntech: título 📱💻⚡, informativo\n\nResponda APENAS com o texto da oferta.\n\n---\nDADOS DO PRODUTO:\nTítulo: {{ $item(\"0\").$node[\"API SHOPEE\"].json[\"data\"][\"productOfferV2\"][\"nodes\"][\"0\"][\"productName\"] }}\nPreço atual: {{ $item(\"0\").$node[\"API SHOPEE\"].json[\"data\"][\"productOfferV2\"][\"nodes\"][\"0\"][\"priceMin\"] }}\nPreço original: {{ $item(\"0\").$node[\"API SHOPEE\"].json[\"data\"][\"productOfferV2\"][\"nodes\"][\"0\"][\"priceMax\"] }}\nLINK: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"link_produto\"] }}\nTOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"tom\"] }}\nCUPOM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"nome\"] || \"nenhum\") : \"nenhum\" }}\nCUPOM PORCENTAGEM: {{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"porcentagem\"] || \"0\") : \"0\" }}%\nCUPOM VALOR MÁXIMO: R${{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"] ? ($item(\"0\").$node[\"Webhook\"].json[\"body\"][\"cupom\"][\"valor_max\"] || \"sem limite\") : \"sem limite\" }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        2176,
+        336
+      ],
+      "id": "2dc46288-c04b-44ce-8424-a84760fc19db",
+      "name": "AI Agent",
+      "retryOnFail": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "openai/gpt-4o-mini",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2176,
+        448
+      ],
+      "id": "9685138b-6d99-4190-9153-6b9debf35900",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "LvtiDMPFLJ381Gv3",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const oferta = $item(\"0\").$node[\"AI Agent\"].json[\"output\"] || '';\n\nlet imagem = '';\ntry {\n  const n = $('API SHOPEE').first().json.data.productOfferV2.nodes[0];\n  imagem = (n && n.imageUrl) || '';\n} catch (e) {}\n\n// FIX 22/08: guarda anti-template. O prompt usava 'preco original'/'preco atual'\n// como placeholder ambiguo e o modelo as vezes copiava o template literal.\nfunction _saneia(txt) {\n  var t = String(txt || '');\n  var tituloQuebrado = /\\[Nome do Produto\\]/i.test(t)\n    || /^\\s*T[íi]tulo\\s*:?\\s*$/mi.test(t)\n    || /^\\s*\\*{0,2}\\s*Produto\\s*\\*{0,2}\\s*$/mi.test(t);\n  if (tituloQuebrado) return { ok: false, motivo: 'template nao preenchido (titulo)', texto: t };\n  var phPreco = /\\[PRECO_ORIGINAL\\]|\\[PRECO_ATUAL\\]|preço original|preço atual|preco original|preco atual/i.test(t);\n  var mDe  = t.match(/De\\s*~\\s*R?\\$?\\s*([\\d.,]+)\\s*~/i);\n  var mPor = t.match(/\\bPor\\b[^*]*\\*\\s*R?\\$?\\s*([\\d.,]+)\\s*\\*/i);\n  var semDesconto = !!(mDe && mPor && mDe[1].trim() === mPor[1].trim());\n  if (phPreco || semDesconto) {\n    t = t.split('\\n').filter(function (l) {\n      return !(/De\\s*~/i.test(l) || /\\bPor\\b[^*]*\\*/i.test(l));\n    }).join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n  }\n  return { ok: true, texto: t, ajustado: (phPreco || semDesconto) };\n}\n\nvar _g = _saneia(oferta);\nif (!_g.ok) {\n  console.error('OFERTA BLOQUEADA: ' + _g.motivo);\n  return { json: { success: false, erro: _g.motivo, oferta: '', imagem: '' } };\n}\nif (_g.ajustado) console.warn('linha de preco removida (placeholder ou De=POR)');\nreturn { json: { success: true, oferta: _g.texto, imagem: imagem } };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2528,
+        336
+      ],
+      "id": "37ae9461-4841-4f89-9e15-9c023574436c",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        2752,
+        336
+      ],
+      "id": "81b716fb-fe13-4395-b649-d02f71588a0a",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "DESENCURTADOR_DE_LINK5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DESENCURTADOR_DE_LINK5": {
+      "main": [
+        [
+          {
+            "node": "IDENTIFICA PLATAFORMA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IDENTIFICA PLATAFORMA": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "puppeter4",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Token OAuth Amazon",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "DESENCURTADOR_DE_LINK",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro Plataforma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro Plataforma": {
+      "main": [
+        [
+          {
+            "node": "Respond Erro Plataforma",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "puppeter4": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript14",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript14": {
+      "main": [
+        [
+          {
+            "node": "HTTP fetch ML page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP fetch ML page": {
+      "main": [
+        [
+          {
+            "node": "HTML og:image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML og:image": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields6": {
+      "main": [
+        [
+          {
+            "node": "HTTP img ML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP img ML2": {
+      "main": [
+        [
+          {
+            "node": "Edit Image ML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Image ML2": {
+      "main": [
+        [
+          {
+            "node": "Extract File ML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract File ML2": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "Valida Produto ML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valida Produto ML": {
+      "main": [
+        [
+          {
+            "node": "IF Dados ML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Dados ML": {
+      "main": [
+        [
+          {
+            "node": "AI Agent9",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Erro Dados ML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model9": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent9",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent9": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript15",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript15": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Erro Dados ML": {
+      "main": [
+        [
+          {
+            "node": "Respond Erro ML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Token OAuth Amazon": {
+      "main": [
+        [
+          {
+            "node": "credenciais amazon1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "credenciais amazon1": {
+      "main": [
+        [
+          {
+            "node": "APIAMAZON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "APIAMAZON": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent3": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DESENCURTADOR_DE_LINK": {
+      "main": [
+        [
+          {
+            "node": "Buscar Chaves API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Chaves API": {
+      "main": [
+        [
+          {
+            "node": "gera-assinatura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "gera-assinatura": {
+      "main": [
+        [
+          {
+            "node": "API SHOPEE",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API SHOPEE": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d3c3ae74e3b5a400ab6b60411c4de9ee710f1877f4609a2dc7b61fe2cfaadff"
+  }
+}
