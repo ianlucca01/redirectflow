@@ -295,7 +295,7 @@
     },
     {
       "parameters": {
-        "url": "={{ $item(\"0\").$node[\"Edit Fields6\"].json[\"imagem\"] || 'https://http.cat/200.jpg' }}",
+        "url": "={{ $item(\"0\").$node[\"Edit Fields6\"].json[\"imagem\"] || 'https://placehold.co/1x1.png' }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
