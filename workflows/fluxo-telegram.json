@@ -10,8 +10,8 @@
       "name": "Webhook",
       "type": "n8n-nodes-base.webhook",
       "position": [
-        -112,
-        304
+        240,
+        480
       ],
       "webhookId": "d3d1b1a9-adab-42ea-bdd2-0e20d8cb28b9",
       "typeVersion": 2.1
@@ -32,11 +32,14 @@
       "id": "596c7a61-b31e-4047-a3e7-71854dec6faf",
       "name": "usuario_ativo?",
       "type": "n8n-nodes-base.supabase",
+      "maxTries": 2,
       "position": [
-        112,
-        304
+        464,
+        480
       ],
+      "retryOnFail": true,
       "typeVersion": 1,
+      "waitBetweenTries": 500,
       "credentials": {
         "supabaseApi": {
           "id": "0EpUhAk2WvhnrKZb",
@@ -63,7 +66,7 @@
                 "operation": "true",
                 "singleValue": true
               },
-              "leftValue": "={{ new Date($item(\"0\").$node[\"usuario_ativo?\"].json[\"data_fim\"]) > new Date() }}",
+              "leftValue": "={{ ($item(\"0\").$node[\"usuario_ativo?\"].json[\"status\"] === \"ativo\") && (new Date($item(\"0\").$node[\"usuario_ativo?\"].json[\"data_fim\"]) > new Date()) }}",
               "rightValue": "true"
             }
           ]
@@ -74,8 +77,8 @@
       "name": "If7",
       "type": "n8n-nodes-base.if",
       "position": [
-        336,
-        304
+        688,
+        480
       ],
       "typeVersion": 2.2
     },
@@ -95,11 +98,14 @@
       "id": "dbf25593-ac79-4c1c-9c73-4dd202d25d21",
       "name": "Buscar Chaves API",
       "type": "n8n-nodes-base.supabase",
+      "maxTries": 2,
       "position": [
-        608,
-        304
+        960,
+        480
       ],
+      "retryOnFail": true,
       "typeVersion": 1,
+      "waitBetweenTries": 500,
       "credentials": {
         "supabaseApi": {
           "id": "0EpUhAk2WvhnrKZb",
@@ -115,8 +121,8 @@
       "name": "ORGANIZA",
       "type": "n8n-nodes-base.code",
       "position": [
-        832,
-        304
+        1184,
+        480
       ],
       "typeVersion": 2
     },
@@ -198,61 +204,43 @@
       "name": "DADOS_USUARIO",
       "type": "n8n-nodes-base.set",
       "position": [
-        1072,
-        304
+        1424,
+        480
       ],
       "typeVersion": 3.4
     },
     {
       "parameters": {
-        "model": "openai/gpt-4o-mini",
-        "options": {}
-      },
-      "id": "ffaa6ac3-17c4-49fe-8ae0-b498b6447474",
-      "name": "OpenRouter Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-      "position": [
-        1792,
-        896
-      ],
-      "typeVersion": 1,
-      "credentials": {
-        "openRouterApi": {
-          "id": "W29TkGQhG6hoqy4H",
-          "name": "OpenRouter account 2"
-        }
-      }
-    },
-    {
-      "parameters": {
         "promptType": "define",
-        "text": "=Você é um LIMPADOR de ofertas para o Telegram. Sua função é APENAS limpar e extrair — você NUNCA reescreve, resume, parafraseia ou inventa nada.\n\n═══════════════════════════════════════════════\nREGRAS ABSOLUTAS (NUNCA QUEBRE — VALEM ACIMA DE TUDO)\n═══════════════════════════════════════════════\n1. NÃO DUPLIQUE nenhuma linha. Cada linha do original aparece no máximo UMA vez no resultado. (Erro comum e PROIBIDO: repetir o título/nome do produto duas vezes.)\n2. NÃO PARAFRASEIE e não troque palavras. Copie o texto EXATAMENTE como está escrito. Exemplos do que é PROIBIDO: trocar \"Por:\" por \"Agora:\", trocar \"você não paga nenhum adicional\" por outra frase.\n3. NÃO ALTERE nenhum número, preço, porcentagem ou CÓDIGO DE CUPOM. Copie caractere por caractere. Exemplo: o cupom \"ESQUENTA7D07DECOR\" tem que sair idêntico — jamais \"ESQUENTA7007DECOR\". Na dúvida, copie exatamente o que está no original.\n4. NÃO INVENTE e não adicione nenhuma frase, linha, emoji ou chamada que não exista no texto original (ex.: PROIBIDO criar \"você me paga um café sem custo extra\"). Você só REMOVE o que as regras abaixo mandam remover.\n5. MANTENHA TODAS as linhas de preço, inclusive o preço cheio \"De: R$...\" E o \"Por:/Agora:/desconto\". Nunca apague o preço de referência.\n\nSe você ficar em dúvida entre limpar ou preservar, PRESERVE o texto original como está.\n\n═══════════════════════════════════════════════\nO QUE VOCÊ PODE FAZER (e SOMENTE isto)\n═══════════════════════════════════════════════\nA. Remover símbolos de formatação Markdown/WhatsApp usados como negrito/itálico/riscado (asteriscos, til ~, underline _) — removendo SÓ o símbolo, sem mexer no texto que estava em volta.\nB. Remover linhas inteiras que contenham um link (http:// ou https://).\n   EXCEÇÃO: se for cupom da Shopee (ver seção CUPOM SHOPEE), mantenha a linha e o link do cupom.\nC. Remover rótulos/linhas de link como: \"Link:\", \"Compre em:\", \"Link do produto:\", \"PEGAR OFERTA:\", \"Loja oficial...\", \"Loja: ...\". Se o rótulo estava junto do link, remova a linha inteira.\nD. Remover linhas de streaming/assinatura digital: Prime, Amazon Prime, Prime Video, Netflix, Spotify, Disney+, Paramount+, Star+, Deezer, YouTube Premium, Globoplay, Apple TV+, HBO Max, Kindle Unlimited, \"Seja Prime\", \"Assine\", \"30 dias grátis\", \"teste grátis\", etc. — e o link que vier junto.\nE. Colapsar excesso de linhas vazias (no máximo 1 linha vazia entre seções).\n\nTudo o que NÃO está nesta lista deve ser MANTIDO igual: emojis, título do produto, preços, descontos, código de cupom, descrição e chamadas de atenção do início.\n\n═══════════════════════════════════════════════\nESCOLHA DO LINK (campo \"link\" da saída)\n═══════════════════════════════════════════════\nVocê recebe duas fontes: CAPTION (texto da oferta) e LINK DESENCURTADO (fallback já expandido).\n1. Extraia o(s) link(s) do CAPTION.\n2. Se algum link do CAPTION já for de um marketplace permitido, use esse.\n3. Se os links do CAPTION forem encurtados/estranhos (bit.ly, meli.la, meli.lo, go.ly, etc.), use o LINK DESENCURTADO.\n4. O valor final do campo \"link\" deve ser uma URL de um destes marketplaces:\n   - Amazon (amzn.to, amazon.com, amazon.com.br)\n   - Mercado Livre (mercadolivre.com, mercadolibre.com, meli.la, meli.lo)\n   - Shopee (shopee.com.br, s.shopee)\n\nREJEIÇÃO (retorne erro) se:\n- For só cupom sem produto físico claro.\n- For convite para grupo de WhatsApp/Telegram.\n- Nenhum dos links (CAPTION nem desencurtado) for de um marketplace permitido.\nNesse caso: {\"sucesso\": false, \"erro\": \"fonte_invalida_ou_grupo\"}\n\n═══════════════════════════════════════════════\nCUPOM SHOPEE (exceção)\n═══════════════════════════════════════════════\nSe o texto contiver \"resgate o cupom aqui\" / \"resgate seu cupom aqui\" / \"resgatar cupom\" / \"cupom aqui\" E o link for da Shopee:\n- MANTENHA essas linhas no texto_formatado.\n- MANTENHA o link do cupom.\n- Inclua \"tem_cupom_resgate\": true e \"link_cupom\": \"URL_DO_CUPOM\".\nCaso contrário, \"tem_cupom_resgate\": false.\n\nOBS: um código de cupom no texto (ex.: \"Cupom: VEMAPROVEITAR\") NÃO é link de resgate — apenas mantenha a linha intacta (regra 3) e deixe tem_cupom_resgate como false se não houver as frases acima.\n\n═══════════════════════════════════════════════\nSAÍDA (JSON puro, SEM crases e SEM ```json em volta)\n═══════════════════════════════════════════════\nSucesso sem cupom:\n{\"sucesso\": true, \"link\": \"URL_DO_MARKETPLACE\", \"texto_formatado\": \"TEXTO_LIMPO\", \"tem_cupom_resgate\": false}\n\nSucesso com cupom Shopee:\n{\"sucesso\": true, \"link\": \"URL_DO_MARKETPLACE\", \"link_cupom\": \"URL_DO_CUPOM\", \"texto_formatado\": \"TEXTO_LIMPO_COM_CUPOM\", \"tem_cupom_resgate\": true}\n\nErro:\n{\"sucesso\": false, \"erro\": \"MOTIVO\"}\n\nResponda EXCLUSIVAMENTE o objeto JSON, nada antes nem depois.\n\n---\n\nCAPTION:\n{{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"text\"] }}\n\nLINK DESENCURTADO (fallback):\n{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK4\"].json[\"url_final\"] }}",
+        "text": "=Você é um assistente especializado em extrair e limpar dados de ofertas para o Telegram.\n\n### 0. ENTRADA DE DADOS\nVocê receberá DUAS fontes de informação:\n- CAPTION (texto principal): contém o texto da oferta com possíveis links\n- LINK DESENCURTADO (fallback): um link já processado e expandido, caso o link do caption seja encurtado ou irreconhecível\n\nUse o LINK DESENCURTADO como referência prioritária para identificar a plataforma e como valor final do campo \"link\" na saída, EXCETO se o caption já contiver um link direto e válido de um marketplace permitido.\n\nLógica de decisão do link:\n1. Extraia o(s) link(s) do caption\n2. Se algum link do caption já for de um marketplace permitido, use esse link\n3. Se os links do caption forem encurtados/estranhos (ex: bit.ly, go.ly, etc.), use o LINK DESENCURTADO\n4. Se ambos falharem, retorne erro\n\n### 1. VALIDAÇÃO DE FONTE (Allowlist)\nAnalise o link final escolhido (do caption OU o desencurtado). Prossiga APENAS se o produto for de um destes marketplaces:\n- Amazon (amzn.to, amazon.com, amazon.com.br)\n- Mercado Livre (mercadolivre.com, mercadolibre.com)\n- Shopee (shopee.com.br, s.shopee)\n\nREJEIÇÃO IMEDIATA:\n- Se for apenas cupom sem produto físico claro.\n- Se for convite para grupos de WhatsApp/Telegram.\n- Se NENHUM dos dois links (caption e desencurtado) pertencer aos marketplaces acima.\n\nNesse caso, retorne {\"sucesso\": false, \"erro\": \"fonte_invalida_ou_grupo\"}\n\n### 2. DETECÇÃO DE CUPOM SHOPEE (EXCEÇÃO IMPORTANTE)\nSe o texto contiver as frases:\n- \"resgate o cupom aqui\"\n- \"resgate seu cupom aqui\"\n- \"resgatar cupom\"\n- \"cupom aqui\"\n\nE o link for da SHOPEE (shopee.com.br ou s.shopee):\n- MANTENHA essas linhas no texto_formatado\n- MANTENHA o link do cupom\n- Adicione o campo: \"tem_cupom_resgate\": true\n\n### 3. REGRAS DE FORMATAÇÃO (CRÍTICO)\nO texto será enviado no Telegram sem parse_mode, ou seja, texto puro.\n- REMOVA todos os símbolos de formatação do WhatsApp ou Markdown: asteriscos, tils, underlines usados como marcação de negrito, itálico ou riscado.\n- Exemplos de remoção:\n  - Texto entre asteriscos vira texto normal sem os asteriscos\n  - Texto entre tils vira texto normal sem os tils\n  - Texto entre underlines vira texto normal sem os underlines\n- MANTENHA emojis, quebras de linha e espaçamento limpo.\n- O resultado final deve ser texto legível e limpo, sem nenhum símbolo decorativo de formatação.\n\n### 4. PRESERVAÇÃO DE CONTEÚDO IMPORTANTE\n- MANTENHA perguntas ou chamadas de atenção no início (ex: \"VCS APRECIAM...\", \"OLHA ISSO...\", \"NÃO PERCA...\")\n- MANTENHA descrições, preços, descontos e emojis\n- MANTENHA informações sobre a loja/produto\n\n### 5. LIMPEZA DO TEXTO\n- Remova TODAS as linhas que contenham links (http://, https://)\n  EXCETO: Se for cupom da Shopee (detectado na regra 2), mantenha o link do cupom\n- Remova rótulos de link como: \"Loja oficial X no ML:\", \"Link:\", \"Compre em:\", \"Link do produto:\"\n- Se houver um rótulo antes do link, substitua por apenas uma linha vazia (o link será adicionado depois)\n- Remova linhas vazias excessivas (máximo 1 linha vazia entre seções)\n- Remova TODAS as linhas relacionadas a assinaturas de streaming ou serviços digitais, incluindo mas não limitado a:\n  - \"Seja Prime\", \"Assine Prime\", \"Teste Prime\", \"30 dias grátis\", \"30 dias gratis\"\n  - \"Assine e ganhe\", \"Assinatura grátis\", \"Período de teste\", \"Experimente grátis\"\n  - \"Aproveite ainda mais benefícios\", \"Assine aqui\", \"Assine agora\"\n  - Qualquer menção a: Prime Video, Amazon Prime, Spotify, Netflix, Disney+, Paramount+, Star+, Deezer, YouTube Premium, Globoplay, Apple TV+, HBO Max, Kindle Unlimited\n  - Links que acompanham essas linhas de streaming também devem ser removidos\n  - Se a linha contiver um emoji + texto sobre streaming/assinatura + link, remova a linha inteira\n  - Se houver um bloco inteiro dedicado a streaming, remova o bloco inteiro\n\n### 6. FORMATO DE SAÍDA (JSON)\nResponda EXCLUSIVAMENTE um objeto JSON válido, sem markdown em volta (sem crases ou blocos de código).\n\nEstrutura de Sucesso SEM cupom:\n{\n  \"sucesso\": true,\n  \"link\": \"URL_FINAL_DO_MARKETPLACE\",\n  \"texto_formatado\": \"TEXTO_LIMPO_AQUI\",\n  \"tem_cupom_resgate\": false\n}\n\nEstrutura de Sucesso COM cupom Shopee:\n{\n  \"sucesso\": true,\n  \"link\": \"URL_FINAL_DO_MARKETPLACE\",\n  \"link_cupom\": \"URL_DO_CUPOM_SHOPEE\",\n  \"texto_formatado\": \"TEXTO_LIMPO_COM_LINHA_DO_CUPOM_MANTIDA\",\n  \"tem_cupom_resgate\": true\n}\n\nEstrutura de Erro:\n{\n  \"sucesso\": false,\n  \"erro\": \"MOTIVO\"\n}\n\n---\n\nCAPTION:\n{{ $item(\"0\").$node[\"Webhook\"].json[\"body\"][\"text\"] }}\n\nLINK DESENCURTADO (fallback):\n{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK4\"].json[\"url_final\"] }}",
+        "needsFallback": true,
         "options": {}
       },
       "id": "d65a600b-7f94-480a-b010-118e44ac31b3",
       "name": "AI Agent",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "maxTries": 2,
       "position": [
-        2096,
-        304
+        2448,
+        480
       ],
-      "retryOnFail": true,
+      "retryOnFail": false,
       "typeVersion": 3,
-      "waitBetweenTries": 3000
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
         "url": "=https://desencurtar.rediirect.com/desencurtar.php?url={{ $item(\"0\").$node[\"Code in JavaScript7\"].json[\"link_compra\"] }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "0cab70e8-5918-4a55-b244-728852a8b490",
       "name": "DESENCURTADOR_DE_LINK4",
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 2,
       "position": [
-        1888,
-        304
+        2048,
+        480
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
@@ -261,15 +249,15 @@
     },
     {
       "parameters": {
-        "jsCode": "// Pega output do AI Agent (pode vir em diferentes formatos)\nlet rawOutput = $input.item.json.output || $input.item.json;\nif (Array.isArray(rawOutput)) {\n  rawOutput = rawOutput[0].output || rawOutput[0];\n}\n\n// Remove markdown em volta do JSON\nlet output = rawOutput.replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n\n// Parse do JSON do modelo — usado APENAS para \"link\" e \"tem_cupom_resgate\".\n// O TEXTO da mensagem NÃO vem mais do modelo (ver abaixo).\nlet dados;\ntry {\n  dados = JSON.parse(output);\n} catch (e) {\n  try {\n    let outputEscaped = output.replace(/\\\\n/g, '\\\\\\\\n');\n    dados = JSON.parse(outputEscaped);\n  } catch (e2) {\n    throw new Error(`Erro ao parsear resposta do AI Agent: ${e2.message}`);\n  }\n}\nif (!dados || typeof dados !== 'object') {\n  throw new Error('Resposta do AI Agent não é um objeto válido');\n}\n\n// ─────────────────────────────────────────────────────────────────────────\n// LIMPEZA DETERMINÍSTICA A PARTIR DO TEXTO ORIGINAL (não usa o texto do LLM)\n//\n// Mantém EMOJIS e ESPAÇAMENTO exatamente como no original. O código só\n// REMOVE: símbolos de markdown (* ~ _itálico_), linhas com link, rótulos de\n// CTA sozinhos e linhas de streaming/assinatura. NUNCA reescreve, NUNCA\n// duplica e NUNCA mexe em preços/cupons. O link de afiliado é adicionado\n// depois, pelos nodes \"Preparar Mensagem Final\".\n// ─────────────────────────────────────────────────────────────────────────\nfunction limparTexto(txt) {\n  if (!txt || typeof txt !== 'string') return '';\n\n  const temLink = /https?:\\/\\//i;\n\n  // Linha que é SÓ um rótulo de CTA (sem mais nada útil)\n  const ehRotuloCTA = /^\\s*[^\\w]*\\s*(compre aqui|compre em|comprar aqui|link do produto|link da oferta|link aqui|link|pegar oferta|garanta o seu|garanta|clique aqui|acesse aqui|acesse)\\s*:?\\s*$/i;\n\n  // Linha de streaming/assinatura digital (termos específicos p/ não pegar produto)\n  const ehStreaming = /(prime video|amazon prime|seja prime|assine (?:o )?prime|teste prime|kindle unlimited|spotify|netflix|disney\\s*\\+|paramount\\s*\\+|star\\s*\\+|apple tv\\s*\\+|hbo max|globoplay|youtube premium|deezer|30 dias gr[aá]tis|assine agora|assine aqui|assine e ganhe|assinatura gr[aá]tis|experimente gr[aá]tis|per[ií]odo de teste|aproveite ainda mais benef)/i;\n\n  const linhas = [];\n  for (let linha of txt.split('\\n')) {\n    // Remove SÓ os marcadores de formatação (mantém emojis intactos):\n    linha = linha.replace(/[*~]/g, '');                         // *negrito* / ~riscado~\n    linha = linha.replace(/(^|\\s)_([^_\\n]+)_(?=\\s|$)/g, '$1$2'); // _itálico_ (não toca em cupom tipo ABC_DEF)\n    linha = linha.replace(/[ \\t]+$/g, '');                      // espaço/tab no fim\n\n    if (temLink.test(linha)) continue;       // qualquer linha com URL\n    if (ehRotuloCTA.test(linha)) continue;   // rótulo de CTA isolado\n    if (ehStreaming.test(linha)) continue;   // streaming/assinatura\n\n    linhas.push(linha);\n  }\n\n  // Preserva o espaçamento do original; só evita buracos gigantes (3+ vazias -> 2)\n  return linhas.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\n// Texto SEMPRE vem do original (Webhook), nunca do modelo\nconst textoOriginal = $item(0).$node[\"Webhook\"].json[\"body\"][\"text\"] || \"\";\ndados.texto_formatado = limparTexto(textoOriginal);\n\nreturn [{ json: dados }];"
+        "jsCode": "// Pega output do AI Agent (pode vir em diferentes formatos)\nlet rawOutput = $input.item.json.output || $input.item.json;\nif (Array.isArray(rawOutput)) {\n  rawOutput = rawOutput[0].output || rawOutput[0];\n}\n\n// Remove markdown em volta do JSON\nlet output = (typeof rawOutput==='string'?rawOutput:JSON.stringify(rawOutput)).replace(/```json\\s*/g, '').replace(/```\\s*/g, '').trim();\n\n// Parse do JSON do modelo — usado APENAS para \"link\" e \"tem_cupom_resgate\".\n// O TEXTO da mensagem NÃO vem mais do modelo (ver abaixo).\nlet dados;\ntry {\n  dados = JSON.parse(output);\n} catch (e) {\n  try {\n    let outputEscaped = output.replace(/\\\\n/g, '\\\\\\\\n');\n    dados = JSON.parse(outputEscaped);\n  } catch (e2) {\n    return [{ json: { sucesso: false, erro: 'JSON invalido da IA (parse falhou)' } }];\n  }\n}\nif (!dados || typeof dados !== 'object') {\n  return [{ json: { sucesso: false, erro: 'JSON invalido da IA (parse falhou)' } }];\n}\n\n// ─────────────────────────────────────────────────────────────────────────\n// LIMPEZA DETERMINÍSTICA A PARTIR DO TEXTO ORIGINAL (não usa o texto do LLM)\n//\n// Mantém EMOJIS e ESPAÇAMENTO exatamente como no original. O código só\n// REMOVE: símbolos de markdown (* ~ _itálico_), linhas com link, rótulos de\n// CTA sozinhos e linhas de streaming/assinatura. NUNCA reescreve, NUNCA\n// duplica e NUNCA mexe em preços/cupons. O link de afiliado é adicionado\n// depois, pelos nodes \"Preparar Mensagem Final\".\n// ─────────────────────────────────────────────────────────────────────────\nfunction limparTexto(txt) {\n  if (!txt || typeof txt !== 'string') return '';\n\n  const temLink = /https?:\\/\\//i;\n\n  // Linha que é SÓ um rótulo de CTA (sem mais nada útil)\n  const ehRotuloCTA = /^\\s*[^\\w]*\\s*(compre aqui|compre em|comprar aqui|link do produto|link da oferta|link aqui|link|pegar oferta|garanta o seu|garanta|clique aqui|acesse aqui|acesse)\\s*:?\\s*$/i;\n\n  // Linha de streaming/assinatura digital (termos específicos p/ não pegar produto)\n  const ehStreaming = /(prime video|amazon prime|seja prime|assine (?:o )?prime|teste prime|kindle unlimited|spotify|netflix|disney\\s*\\+|paramount\\s*\\+|star\\s*\\+|apple tv\\s*\\+|hbo max|globoplay|youtube premium|deezer|30 dias gr[aá]tis|assine agora|assine aqui|assine e ganhe|assinatura gr[aá]tis|experimente gr[aá]tis|per[ií]odo de teste|aproveite ainda mais benef)/i;\n\n  const linhas = [];\n  for (let linha of txt.split('\\n')) {\n    // Remove SÓ os marcadores de formatação (mantém emojis intactos):\n    linha = linha.replace(/[*~]/g, '');                         // *negrito* / ~riscado~\n    linha = linha.replace(/(^|\\s)_([^_\\n]+)_(?=\\s|$)/g, '$1$2'); // _itálico_ (não toca em cupom tipo ABC_DEF)\n    linha = linha.replace(/[ \\t]+$/g, '');                      // espaço/tab no fim\n\n    if (temLink.test(linha)) continue;       // qualquer linha com URL\n    if (ehRotuloCTA.test(linha)) continue;   // rótulo de CTA isolado\n    if (ehStreaming.test(linha)) continue;   // streaming/assinatura\n\n    linhas.push(linha);\n  }\n\n  // Preserva o espaçamento do original; só evita buracos gigantes (3+ vazias -> 2)\n  return linhas.join('\\n').replace(/\\n{3,}/g, '\\n\\n').trim();\n}\n\n// Texto SEMPRE vem do original (Webhook), nunca do modelo\nconst textoOriginal = $item(0).$node[\"Webhook\"].json[\"body\"][\"text\"] || \"\";\ndados.texto_formatado = limparTexto(textoOriginal);\n\nreturn [{ json: dados }];"
       },
       "id": "90f9b82f-7b48-45a2-9e55-c88415d3cbfa",
       "name": "Code in JavaScript3",
       "type": "n8n-nodes-base.code",
       "maxTries": 1,
       "position": [
-        2480,
-        304
+        2832,
+        480
       ],
       "retryOnFail": false,
       "typeVersion": 2
@@ -282,23 +270,25 @@
       "name": "IDENTIFICA PLATAFORMA",
       "type": "n8n-nodes-base.code",
       "position": [
-        3280,
-        320
+        3392,
+        480
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
         "url": "=https://desencurtar.rediirect.com/desencurtar.php?url={{ $item(\"0\").$node[\"Code in JavaScript3\"].json[\"link\"] }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "321af2f7-64ca-43db-8a02-372f5de36546",
       "name": "DESENCURTADOR_DE_LINK1",
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 2,
       "position": [
-        3088,
-        320
+        3104,
+        480
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
@@ -391,8 +381,8 @@
       "name": "Switch",
       "type": "n8n-nodes-base.switch",
       "position": [
-        3520,
-        304
+        3616,
+        464
       ],
       "typeVersion": 3.3
     },
@@ -406,8 +396,8 @@
       "name": "Crypto",
       "type": "n8n-nodes-base.crypto",
       "position": [
-        5280,
-        464
+        5632,
+        624
       ],
       "retryOnFail": true,
       "typeVersion": 1,
@@ -422,8 +412,8 @@
       "name": "Code in JavaScript2",
       "type": "n8n-nodes-base.code",
       "position": [
-        5504,
-        464
+        5856,
+        624
       ],
       "typeVersion": 2,
       "onError": "continueRegularOutput"
@@ -449,14 +439,14 @@
       "id": "5d60d827-af0e-4696-8165-2b79018d3c5b",
       "name": "Encurtar Link API",
       "type": "n8n-nodes-base.httpRequest",
-      "maxTries": 2,
+      "maxTries": 3,
       "position": [
-        5760,
-        448
+        6112,
+        624
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
-      "waitBetweenTries": 2000,
+      "waitBetweenTries": 2500,
       "onError": "continueRegularOutput"
     },
     {
@@ -476,15 +466,17 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "b4b59109-2460-4379-9031-70f4df5df5f6",
       "name": "GERAR LINK",
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 5,
       "position": [
-        4000,
-        144
+        4352,
+        320
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
@@ -499,8 +491,8 @@
       "name": "Code in JavaScript4",
       "type": "n8n-nodes-base.code",
       "position": [
-        4160,
-        464
+        4512,
+        640
       ],
       "typeVersion": 2,
       "alwaysOutputData": false,
@@ -524,8 +516,8 @@
       "name": "Edit Fields2",
       "type": "n8n-nodes-base.set",
       "position": [
-        3936,
-        1136
+        4288,
+        1312
       ],
       "typeVersion": 3.4
     },
@@ -537,8 +529,8 @@
       "name": "Code in JavaScript6",
       "type": "n8n-nodes-base.code",
       "position": [
-        4128,
-        1136
+        4480,
+        1312
       ],
       "typeVersion": 2,
       "onError": "continueRegularOutput"
@@ -551,8 +543,8 @@
       "name": "Loop Over Items3",
       "type": "n8n-nodes-base.splitInBatches",
       "position": [
-        5616,
-        1136
+        5968,
+        1312
       ],
       "typeVersion": 3
     },
@@ -564,8 +556,8 @@
       "name": "Wait3",
       "type": "n8n-nodes-base.wait",
       "position": [
-        6064,
-        1136
+        6432,
+        1328
       ],
       "webhookId": "4fe0d426-0aa8-436c-9f03-773084b03266",
       "typeVersion": 1.1
@@ -608,27 +600,32 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "ada1e90f-d72a-45a0-8a46-d9687def042c",
       "name": "HTTP Request10",
       "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
       "position": [
-        5872,
-        1040
+        6208,
+        1328
       ],
-      "typeVersion": 4.3
+      "retryOnFail": true,
+      "typeVersion": 4.3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "// Pega dados dos nós anteriores\nconst instancia = $item(\"0\").$node[\"DADOS_USUARIO\"].json[\"instance_name\"];\nconst textoFormatado = $item(\"0\").$node[\"Code in JavaScript3\"].json[\"texto_formatado\"];\nconst linkCurto = $item(\"0\").$node[\"HTTP Request9\"].json[\"link_curto\"];\n\n// Cria caption com CTA\nconst novoCaptionCompleto = `${textoFormatado}\\n\\nCompre aqui: ${linkCurto}`;\n\nconsole.log('Link curto:', linkCurto);\nconsole.log('Caption final:', novoCaptionCompleto);\n\nreturn [{\n  json: {\n    instancia: instancia,\n    caption: novoCaptionCompleto,\n    link_curto: linkCurto\n  }\n}];"
+        "jsCode": "// GUARD anti-imagem-sem-copy (item 2b): se o texto da IA veio vazio, NAO envia.\nconst __js3 = ($item(0).$node[\"Code in JavaScript3\"] && $item(0).$node[\"Code in JavaScript3\"].json) || {};\nconst __tf = __js3.texto_formatado;\nif (!__tf || typeof __tf !== 'string' || __tf.trim() === '') {\n  return []; // pula o envio: melhor nao mandar do que mandar imagem sem legenda\n}\n\n// Pega dados dos nós anteriores\nconst instancia = $item(\"0\").$node[\"DADOS_USUARIO\"].json[\"instance_name\"];\nconst textoFormatado = $item(\"0\").$node[\"Code in JavaScript3\"].json[\"texto_formatado\"];\nconst linkCurto = $item(\"0\").$node[\"HTTP Request9\"].json[\"link_curto\"];\n\n// Cria caption com CTA\nconst novoCaptionCompleto = `${textoFormatado}\\n\\nCompre aqui: ${linkCurto}`;\n\nconsole.log('Link curto:', linkCurto);\nconsole.log('Caption final:', novoCaptionCompleto);\n\nreturn [{\n  json: {\n    instancia: instancia,\n    caption: novoCaptionCompleto,\n    link_curto: linkCurto\n  }\n}];"
       },
       "id": "56cf8889-5909-45f1-ba29-68bf06967bf2",
       "name": "Preparar Mensagem Final2",
       "type": "n8n-nodes-base.code",
       "position": [
-        5088,
-        1136
+        5440,
+        1312
       ],
       "typeVersion": 2,
       "alwaysOutputData": true,
@@ -654,12 +651,15 @@
       "id": "a0139d49-8c19-4efc-b4d5-3576a33d490e",
       "name": "Buscar Grupos Disparo",
       "type": "n8n-nodes-base.supabase",
+      "maxTries": 2,
       "position": [
-        5392,
-        1136
+        5744,
+        1312
       ],
       "executeOnce": false,
+      "retryOnFail": true,
       "typeVersion": 1,
+      "waitBetweenTries": 500,
       "credentials": {
         "supabaseApi": {
           "id": "0EpUhAk2WvhnrKZb",
@@ -675,29 +675,29 @@
       "name": "Code in JavaScript1",
       "type": "n8n-nodes-base.code",
       "position": [
-        5056,
-        464
+        5408,
+        624
       ],
       "typeVersion": 2,
       "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "model": "openai/gpt-4o-mini",
+        "model": "google/gemini-2.5-flash-lite",
         "options": {}
       },
       "id": "181563c0-f7f2-422e-9715-2b466e40945e",
       "name": "OpenRouter Chat Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "position": [
-        4528,
-        784
+        4656,
+        944
       ],
       "typeVersion": 1,
       "credentials": {
         "openRouterApi": {
-          "id": "W29TkGQhG6hoqy4H",
-          "name": "OpenRouter account 2"
+          "id": "LvtiDMPFLJ381Gv3",
+          "name": "OpenRouter account"
         }
       }
     },
@@ -705,30 +705,30 @@
       "parameters": {
         "promptType": "define",
         "text": "=Extraia o shop_id e item_id deste link da Shopee:\n\n{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK1\"].json[\"url_final\"] }}\n\nRetorne APENAS um JSON válido no formato:\n{\n  \"shop_id\": \"123456\",\n  \"item_id\": \"789012\",\n  \"link_completo\": \"url_completa_aqui\"\n}\n\nNÃO adicione texto, explicações ou markdown. APENAS o JSON.",
+        "needsFallback": true,
         "options": {}
       },
       "id": "44b73d2d-10e8-4cb2-949b-a8b3b78a990c",
       "name": "AI Agent1",
       "type": "@n8n/n8n-nodes-langchain.agent",
-      "maxTries": 2,
       "position": [
-        4464,
-        544
+        4816,
+        720
       ],
-      "retryOnFail": true,
+      "retryOnFail": false,
       "typeVersion": 3,
-      "waitBetweenTries": 3000
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
-        "jsCode": "// Pega output do Gemini\nlet output = $input.item.json.output || $input.item.json.text;\n\n// Remove markdown se houver\noutput = output.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// Parse do JSON\nlet dados;\ntry {\n  dados = JSON.parse(output);\n} catch (e) {\n  console.error('Erro ao parsear JSON do Gemini:', e);\n  console.error('Output recebido:', output);\n  throw new Error('Gemini retornou formato inválido');\n}\n\n// Retorna no formato esperado\nreturn [{\n  json: {\n    shop_id: dados.shop_id,\n    item_id: dados.item_id,\n    link_completo: dados.link_completo\n  }\n}];"
+        "jsCode": "// Pega output do Gemini\nlet output = $input.item.json.output || $input.item.json.text;\n\n// Remove markdown se houver\nif (typeof output !== 'string') output = JSON.stringify(output ?? '');\noutput = output.replace(/```json\\n?/g, '').replace(/```\\n?/g, '').trim();\n\n// Parse do JSON\nlet dados;\ntry {\n  dados = JSON.parse(output);\n} catch (e) {\n  console.error('Erro ao parsear JSON do Gemini:', e);\n  console.error('Output recebido:', output);\n  return [{ json: { sucesso: false, erro: 'JSON invalido da IA (parse falhou)' } }];\n}\n\n// Retorna no formato esperado\nreturn [{\n  json: {\n    shop_id: dados.shop_id,\n    item_id: dados.item_id,\n    link_completo: dados.link_completo\n  }\n}];"
       },
       "id": "850af3ce-31fc-4cdb-91cd-0209fc8fee1e",
       "name": "Code in JavaScript",
       "type": "n8n-nodes-base.code",
       "position": [
-        4800,
-        576
+        5152,
+        752
       ],
       "typeVersion": 2
     },
@@ -740,8 +740,8 @@
       "name": "Code in JavaScript8",
       "type": "n8n-nodes-base.code",
       "position": [
-        5984,
-        448
+        6336,
+        624
       ],
       "typeVersion": 2,
       "onError": "continueRegularOutput"
@@ -768,56 +768,63 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "0a10e178-a1d9-4d61-b41c-7591a48bbac3",
       "name": "HTTP Request9",
       "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
       "position": [
-        4896,
-        1136
+        5248,
+        1312
       ],
-      "typeVersion": 4.3
+      "retryOnFail": true,
+      "typeVersion": 4.3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
-        "jsCode": "// Pega link curto do Encurtar Link API\nconst encurtarOut = $item(0).$node[\"Encurtar Link API\"]?.json;\nconst linkCurto = encurtarOut?.data?.generateShortLink?.shortLink;\n\nif (!linkCurto) {\n  // SEM LINK = ABORTA (não mandar mensagem incompleta)\n  const errCode = encurtarOut?.errors?.[0]?.extensions?.code || \"unknown\";\n  throw new Error(`Shopee createLink falhou (${errCode}) — abortando para não enviar caption sem link`);\n}\n\nconst descricaoSemLink = $item(0).$node[\"Code in JavaScript3\"]?.json?.texto_formatado || \"\";\nlet textoCompleto = `${descricaoSemLink}\\n\\nCompre aqui: ${linkCurto}`;\n\n// ─────────────────────────────────────────────────────────────────────────\n// FIX (cupom Shopee) — adiciona o link de resgate do cliente de forma\n// determinística. Antes isso dependia do LLM manter a linha do cupom no\n// texto_formatado, o que falhava na maioria das ofertas (link de resgate\n// não era enviado). O link vem da credencial \"resgate-shopee\" do usuário\n// (DADOS_USUARIO). Detecta cupom pela flag do AI OU por detecção no texto.\n// ─────────────────────────────────────────────────────────────────────────\nconst textoOriginal = ($item(0).$node[\"Webhook\"]?.json?.body?.text || \"\").toLowerCase();\nconst cupomPorTexto = /(resgate (?:o |seu )?cupom|resgatar cupom|cupom aqui)/i.test(textoOriginal);\nconst cupomPorFlag = $item(0).$node[\"Code in JavaScript3\"]?.json?.tem_cupom_resgate === true;\nconst linkResgate = $item(0).$node[\"DADOS_USUARIO\"]?.json?.[\"resgate-shopee\"];\n\nif ((cupomPorFlag || cupomPorTexto) && linkResgate) {\n  textoCompleto += `\\n\\n🎟️ Resgate o cupom aqui: ${linkResgate}`;\n}\n\nreturn [{ json: { texto: textoCompleto, link_curto: linkCurto } }];"
+        "jsCode": "// GUARD anti-imagem-sem-copy (item 2b): se o texto da IA veio vazio, NAO envia.\nconst __js3 = ($item(0).$node[\"Code in JavaScript3\"] && $item(0).$node[\"Code in JavaScript3\"].json) || {};\nconst __tf = __js3.texto_formatado;\nif (!__tf || typeof __tf !== 'string' || __tf.trim() === '') {\n  return []; // pula o envio: melhor nao mandar do que mandar imagem sem legenda\n}\n\n// FIX: se o link foi marcado como skip (cupom/voucher, nao e produto),\n// envia com o link ORIGINAL em vez de abortar.\nconst skipInfo = $item(0).$node[\"Code in JavaScript4\"]?.json;\nif (skipInfo?.skip === true) {\n  const descricao = $item(0).$node[\"Code in JavaScript3\"]?.json?.texto_formatado || \"\";\n  const linkOriginal = skipInfo.link || \"\";\n  let texto = linkOriginal ? `${descricao}\\n\\nCompre aqui: ${linkOriginal}` : descricao;\n  const linkResgateSkip = $item(0).$node[\"DADOS_USUARIO\"]?.json?.[\"resgate-shopee\"];\n  const flagCupom = $item(0).$node[\"Code in JavaScript3\"]?.json?.tem_cupom_resgate === true;\n  if (flagCupom && linkResgateSkip) {\n    texto += `\\n\\n🎟️ Resgate o cupom aqui: ${linkResgateSkip}`;\n  }\n  return [{ json: { texto: texto, link_curto: linkOriginal, pulou_encurtamento: true, motivo: skipInfo.reason } }];\n}\n\n// Pega link curto do Encurtar Link API\nconst encurtarOut = $item(0).$node[\"Encurtar Link API\"]?.json;\nconst linkCurto = encurtarOut?.data?.generateShortLink?.shortLink;\n\nif (!linkCurto) {\n  const errCode = encurtarOut?.errors?.[0]?.extensions?.code || \"unknown\";\n  return [{ json: { sucesso: false, erro: `Shopee createLink falhou (${errCode})`, pular: true } }];\n}\n\nconst descricaoSemLink = $item(0).$node[\"Code in JavaScript3\"]?.json?.texto_formatado || \"\";\nlet textoCompleto = `${descricaoSemLink}\\n\\nCompre aqui: ${linkCurto}`;\n\nconst textoOriginal = ($item(0).$node[\"Webhook\"]?.json?.body?.text || \"\").toLowerCase();\nconst cupomPorTexto = /(resgate (?:o |seu )?cupom|resgatar cupom|cupom aqui)/i.test(textoOriginal);\nconst cupomPorFlag = $item(0).$node[\"Code in JavaScript3\"]?.json?.tem_cupom_resgate === true;\nconst linkResgate = $item(0).$node[\"DADOS_USUARIO\"]?.json?.[\"resgate-shopee\"];\n\nif ((cupomPorFlag || cupomPorTexto) && linkResgate) {\n  textoCompleto += `\\n\\n🎟️ Resgate o cupom aqui: ${linkResgate}`;\n}\n\nreturn [{ json: { texto: textoCompleto, link_curto: linkCurto } }];"
       },
       "id": "be0e2514-acff-4123-be61-366a001efd17",
       "name": "Preparar Mensagem Final4",
       "type": "n8n-nodes-base.code",
       "position": [
-        6272,
-        448
+        6624,
+        624
       ],
       "typeVersion": 2,
       "onError": "default"
     },
     {
       "parameters": {
-        "jsCode": "// Nome do node: \"Preparar Mensagem Final6\" (ML)\n// FIX 09/06: throw quando GERAR LINK falha (401/404) pra nao mandar \"Compre aqui: undefined\"\n\nconst instancia = $item(\"0\").$node[\"DADOS_USUARIO\"].json[\"instance_name\"];\nconst textoFormatado = $item(\"0\").$node[\"Code in JavaScript3\"].json[\"texto_formatado\"];\n\n// Aceitar link de GERAR LINK ou GERAR LINK1 (fallback sem /p/)\nlet linkNovo = '';\ntry {\n  linkNovo = $item(\"0\").$node[\"GERAR LINK\"].json[\"short_url\"];\n} catch (e) {}\nif (!linkNovo) {\n  try {\n    linkNovo = $item(\"0\").$node[\"GERAR LINK1\"].json[\"short_url\"];\n  } catch (e) {}\n}\n\n// GUARD: se nao tem link, ABORTA — nao manda \"Compre aqui: undefined\"\nif (!linkNovo) {\n  const erro = $item(\"0\").$node[\"GERAR LINK\"]?.json?.error || $item(\"0\").$node[\"GERAR LINK\"]?.json?.status || \"sem short_url\";\n  throw new Error(`ML createLink falhou (${erro}) — abortando para nao enviar caption sem link`);\n}\n\n// Construir a mensagem final\nconst mensagemFinal = `${textoFormatado}\\n\\nCompre aqui: ${linkNovo}`;\n\nreturn [\n  {\n    instancia: instancia,\n    mensagem: mensagemFinal,\n    link: linkNovo\n  }\n];"
+        "jsCode": "// GUARD anti-imagem-sem-copy (item 2b): se o texto da IA veio vazio, NAO envia.\nconst __js3 = ($item(0).$node[\"Code in JavaScript3\"] && $item(0).$node[\"Code in JavaScript3\"].json) || {};\nconst __tf = __js3.texto_formatado;\nif (!__tf || typeof __tf !== 'string' || __tf.trim() === '') {\n  return []; // pula o envio: melhor nao mandar do que mandar imagem sem legenda\n}\n\n// Nome do node: \"Preparar Mensagem Final6\" (ML)\n// FIX 09/06: throw quando GERAR LINK falha (401/404) pra nao mandar \"Compre aqui: undefined\"\n\nconst instancia = $item(\"0\").$node[\"DADOS_USUARIO\"].json[\"instance_name\"];\nconst textoFormatado = $item(\"0\").$node[\"Code in JavaScript3\"].json[\"texto_formatado\"];\n\n// Aceitar link de GERAR LINK ou GERAR LINK1 (fallback sem /p/)\nlet linkNovo = '';\ntry {\n  linkNovo = $item(\"0\").$node[\"GERAR LINK\"].json[\"short_url\"];\n} catch (e) {}\nif (!linkNovo) {\n  try {\n    linkNovo = $item(\"0\").$node[\"GERAR LINK1\"].json[\"short_url\"];\n  } catch (e) {}\n}\n\n// GUARD: se nao tem link, ABORTA — nao manda \"Compre aqui: undefined\"\nif (!linkNovo) {\n  const erro = $item(\"0\").$node[\"GERAR LINK\"]?.json?.error || $item(\"0\").$node[\"GERAR LINK\"]?.json?.status || \"sem short_url\";\n  return [{ json: { sucesso: false, erro: `ML createLink falhou (${erro})`, pular: true } }];\n}\n\n// Construir a mensagem final\nconst mensagemFinal = `${textoFormatado}\\n\\nCompre aqui: ${linkNovo}`;\n\nreturn [\n  {\n    instancia: instancia,\n    mensagem: mensagemFinal,\n    link: linkNovo\n  }\n];"
       },
       "id": "e490984c-73c1-4252-a25b-b8970d4716f8",
       "name": "Preparar Mensagem Final6",
       "type": "n8n-nodes-base.code",
       "position": [
-        4272,
-        128
+        4624,
+        304
       ],
       "typeVersion": 2
     },
     {
       "parameters": {
         "url": "=https://desencurtar.rediirect.com/desencurtar.php?url={{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK1\"].json[\"url_final\"] }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "a75f09ff-2a7e-4ca9-8328-3e41152b242c",
       "name": "DESENCURTADOR_DE_LINK2",
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 2,
       "position": [
-        6480,
-        448
+        6832,
+        624
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
@@ -827,20 +834,25 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://89.116.225.101:3050/extrair-mlb",
+        "url": "http://89.116.225.101:3060/extrair-mlb",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={\n  \"url\": \"{{ $item(\"0\").$node[\"DESENCURTADOR_DE_LINK4\"].json[\"url_final\"] }}\"\n}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "160095bd-ccdc-417e-b80d-100ce31fbb4d",
       "name": "puppeter",
       "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
       "position": [
-        3808,
-        144
+        4160,
+        320
       ],
+      "retryOnFail": true,
       "typeVersion": 4.3,
+      "waitBetweenTries": 2000,
       "onError": "continueRegularOutput"
     },
     {
@@ -851,8 +863,8 @@
       "name": "Loop Over Items4",
       "type": "n8n-nodes-base.splitInBatches",
       "position": [
-        7312,
-        448
+        7664,
+        624
       ],
       "typeVersion": 3
     },
@@ -864,8 +876,8 @@
       "name": "Wait4",
       "type": "n8n-nodes-base.wait",
       "position": [
-        7760,
-        448
+        8112,
+        640
       ],
       "webhookId": "4fe0d426-0aa8-436c-9f03-773084b03266",
       "typeVersion": 1.1
@@ -908,16 +920,21 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "4e96e438-0f68-434a-a523-b9a137b55a62",
       "name": "HTTP Request15",
       "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
       "position": [
-        7568,
-        352
+        7904,
+        640
       ],
-      "typeVersion": 4.3
+      "retryOnFail": true,
+      "typeVersion": 4.3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -939,12 +956,15 @@
       "id": "5d637733-0640-48b9-9f75-c9a67b7bc9e4",
       "name": "Buscar Grupos Disparo3",
       "type": "n8n-nodes-base.supabase",
+      "maxTries": 2,
       "position": [
-        7088,
-        448
+        7440,
+        624
       ],
       "executeOnce": false,
+      "retryOnFail": true,
       "typeVersion": 1,
+      "waitBetweenTries": 500,
       "credentials": {
         "supabaseApi": {
           "id": "0EpUhAk2WvhnrKZb",
@@ -960,8 +980,8 @@
       "name": "Loop Over Items",
       "type": "n8n-nodes-base.splitInBatches",
       "position": [
-        5776,
-        112
+        6128,
+        288
       ],
       "typeVersion": 3
     },
@@ -973,8 +993,8 @@
       "name": "Wait",
       "type": "n8n-nodes-base.wait",
       "position": [
-        6272,
-        128
+        6624,
+        304
       ],
       "webhookId": "4fe0d426-0aa8-436c-9f03-773084b03266",
       "typeVersion": 1.1
@@ -1017,16 +1037,21 @@
             }
           ]
         },
-        "options": {}
+        "options": {
+          "timeout": 30000
+        }
       },
       "id": "2daf3c89-c062-4008-ac2d-0b4dbab4c31a",
       "name": "HTTP Request12",
       "type": "n8n-nodes-base.httpRequest",
+      "maxTries": 3,
       "position": [
-        6032,
-        128
+        6384,
+        304
       ],
-      "typeVersion": 4.3
+      "retryOnFail": true,
+      "typeVersion": 4.3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
@@ -1048,12 +1073,15 @@
       "id": "270cc026-1c0e-47d9-a21c-94eeb56a39ef",
       "name": "Buscar Grupos Disparo1",
       "type": "n8n-nodes-base.supabase",
+      "maxTries": 2,
       "position": [
-        5600,
-        112
+        5952,
+        288
       ],
       "executeOnce": false,
+      "retryOnFail": true,
       "typeVersion": 1,
+      "waitBetweenTries": 500,
       "credentials": {
         "supabaseApi": {
           "id": "0EpUhAk2WvhnrKZb",
@@ -1069,8 +1097,8 @@
       "name": "Code in JavaScript15",
       "type": "n8n-nodes-base.code",
       "position": [
-        4320,
-        1136
+        4672,
+        1312
       ],
       "typeVersion": 2
     },
@@ -1092,8 +1120,8 @@
       "name": "Edit Fields",
       "type": "n8n-nodes-base.set",
       "position": [
-        4496,
-        1136
+        4848,
+        1312
       ],
       "typeVersion": 3.4
     },
@@ -1105,8 +1133,8 @@
       "name": "Code in JavaScript19",
       "type": "n8n-nodes-base.code",
       "position": [
-        4688,
-        1136
+        5040,
+        1312
       ],
       "typeVersion": 2,
       "onError": "continueRegularOutput"
@@ -1114,15 +1142,17 @@
     {
       "parameters": {
         "url": "=http://89.116.225.101:3088/api/og-title?url={{ encodeURIComponent($item(\"0\").$node[\"GERAR LINK\"].json[\"long_url\"]) }}",
-        "options": {}
+        "options": {
+          "timeout": 15000
+        }
       },
       "id": "5f17107e-7016-4e52-90af-6e28863f5b1f",
       "name": "confere titulo e desc",
       "type": "n8n-nodes-base.httpRequest",
       "maxTries": 2,
       "position": [
-        4496,
-        128
+        4848,
+        304
       ],
       "retryOnFail": true,
       "typeVersion": 4.3,
@@ -1156,21 +1186,21 @@
       "name": "If9",
       "type": "n8n-nodes-base.if",
       "position": [
-        5216,
-        128
+        5568,
+        304
       ],
       "typeVersion": 2.2
     },
     {
       "parameters": {
-        "jsCode": "// N8N Code Node - Verificador Título vs Descrição\nconst descricao = $item(0).$node[\"Preparar Mensagem Final6\"].json[\"mensagem\"] || '';\nconst titulo = $item(0).$node[\"confere titulo e desc\"].json[\"titulo\"] || '';\n\n// FIX 09/06: se og-image-api não devolve título (rota /api/og-title não existe),\n// não temos como validar. Considera 'sucesso' pra não bloquear envio de ML.\nif (!titulo || titulo.trim().length === 0) {\n  return [{ json: { status: 'sucesso', motivo: 'titulo vazio — bypass do quality control' } }];\n}\n\nfunction normalizar(texto) {\n  return texto\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .split(/\\s+/)\n    .filter(p => p.length > 2);\n}\n\nconst stopWords = [\n  'para', 'com', 'por', 'que', 'uma', 'uns', 'das',\n  'dos', 'seu', 'sua', 'aqui', 'esse', 'essa', 'kit',\n  'pro', 'pre', 'novo', 'nova', 'original', 'oficial',\n  'loja', 'link', 'oferta', 'preco', 'frete', 'gratis',\n  'cupom', 'desconto', 'promocao', 'compre', 'corre',\n  'baixou', 'cada', 'dia', 'semana', 'confira', 'aproveite',\n  'garantia', 'produto', 'melhor', 'super', 'mega', 'otima',\n  'avaliacao', 'estrelas', 'vendidos', 'unidades'\n];\n\nconst palavrasDesc = normalizar(descricao).filter(p => !stopWords.includes(p));\nconst palavrasTitulo = normalizar(titulo).filter(p => !stopWords.includes(p));\n\nif (palavrasTitulo.length === 0) {\n  return [{ json: { status: 'sucesso', motivo: 'titulo so com stopwords — bypass' } }];\n}\n\nconst matches = palavrasTitulo.filter(pt =>\n  palavrasDesc.some(pd => pd.includes(pt) || pt.includes(pd))\n);\nconst score = matches.length / palavrasTitulo.length;\n\nconst resultado = score >= 0.35\n  ? { status: 'sucesso', motivo: 'descrição compatível com o produto' }\n  : { status: 'erro', motivo: 'produto não corresponde ao título' };\n\nreturn [{ json: resultado }];"
+        "jsCode": "// N8N Code Node - Verificador Título vs Descrição\nconst descricao = $item(0).$node[\"Preparar Mensagem Final6\"].json[\"mensagem\"] || '';\nconst titulo = $item(0).$node[\"confere titulo e desc\"].json[\"titulo\"] || '';\n\n// CAMADA B (fix credencial ML): Final6 marca pular/sucesso:false ou fica sem mensagem\n// quando GERAR LINK falha (ex.: credencial ML desconectada). Marca 'erro' -> If9 descarta.\nconst __f6 = ($item(0).$node[\"Preparar Mensagem Final6\"] && $item(0).$node[\"Preparar Mensagem Final6\"].json) || {};\nif (__f6.pular === true || __f6.sucesso === false || !__f6.mensagem || String(__f6.mensagem).trim() === '') {\n  return [{ json: { status: 'erro', motivo: 'CAMB: sem link/mensagem ML (credencial desconectada)' } }];\n}\n\n// FIX 09/06: se og-image-api não devolve título (rota /api/og-title não existe),\n// não temos como validar. Considera 'sucesso' pra não bloquear envio de ML.\nif (!titulo || titulo.trim().length === 0) {\n  return [{ json: { status: 'sucesso', motivo: 'titulo vazio — bypass do quality control' } }];\n}\n\nfunction normalizar(texto) {\n  return texto\n    .toLowerCase()\n    .normalize('NFD')\n    .replace(/[\\u0300-\\u036f]/g, '')\n    .replace(/[^a-z0-9\\s]/g, ' ')\n    .split(/\\s+/)\n    .filter(p => p.length > 2);\n}\n\nconst stopWords = [\n  'para', 'com', 'por', 'que', 'uma', 'uns', 'das',\n  'dos', 'seu', 'sua', 'aqui', 'esse', 'essa', 'kit',\n  'pro', 'pre', 'novo', 'nova', 'original', 'oficial',\n  'loja', 'link', 'oferta', 'preco', 'frete', 'gratis',\n  'cupom', 'desconto', 'promocao', 'compre', 'corre',\n  'baixou', 'cada', 'dia', 'semana', 'confira', 'aproveite',\n  'garantia', 'produto', 'melhor', 'super', 'mega', 'otima',\n  'avaliacao', 'estrelas', 'vendidos', 'unidades'\n];\n\nconst palavrasDesc = normalizar(descricao).filter(p => !stopWords.includes(p));\nconst palavrasTitulo = normalizar(titulo).filter(p => !stopWords.includes(p));\n\nif (palavrasTitulo.length === 0) {\n  return [{ json: { status: 'sucesso', motivo: 'titulo so com stopwords — bypass' } }];\n}\n\nconst matches = palavrasTitulo.filter(pt =>\n  palavrasDesc.some(pd => pd.includes(pt) || pt.includes(pd))\n);\nconst score = matches.length / palavrasTitulo.length;\n\nconst resultado = score >= 0.35\n  ? { status: 'sucesso', motivo: 'descrição compatível com o produto' }\n  : { status: 'erro', motivo: 'produto não corresponde ao título' };\n\nreturn [{ json: resultado }];"
       },
       "id": "aeffad25-991f-48bc-927e-5a377f8c94a1",
       "name": "Code in JavaScript5",
       "type": "n8n-nodes-base.code",
       "position": [
-        4704,
-        128
+        5056,
+        304
       ],
       "typeVersion": 2
     },
@@ -1182,50 +1212,10 @@
       "name": "Code in JavaScript7",
       "type": "n8n-nodes-base.code",
       "position": [
-        1280,
-        304
+        1632,
+        480
       ],
       "typeVersion": 2
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-2.5-flash-lite",
-        "options": {}
-      },
-      "id": "38c43347-eb05-4a5e-9ad1-a4dc3de6f91e",
-      "name": "Google Gemini Chat Model",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "position": [
-        1968,
-        512
-      ],
-      "typeVersion": 1,
-      "credentials": {
-        "googlePalmApi": {
-          "id": "i5W9Hxa6PUwyYKh5",
-          "name": "Google Gemini APIO OFICIAL ALEX"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-2.5-flash-lite",
-        "options": {}
-      },
-      "id": "073bfc3f-c0e4-4ba7-a545-0697d55f272c",
-      "name": "Google Gemini Chat Model2",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "position": [
-        4336,
-        752
-      ],
-      "typeVersion": 1,
-      "credentials": {
-        "googlePalmApi": {
-          "id": "i5W9Hxa6PUwyYKh5",
-          "name": "Google Gemini APIO OFICIAL ALEX"
-        }
-      }
     },
     {
       "parameters": {
@@ -1238,45 +1228,92 @@
       "name": "Sticky Note 2",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        -208,
-        208
+        144,
+        384
       ],
       "typeVersion": 1
     },
     {
       "parameters": {
         "content": "## 📤 ENVIO WHATSAPP — telegram.rediirect.com\n\n3 HTTP Requests (10, 12, 15, 16) enviam ofertas finais via UAZAPI:\n• POST /message/send-media\n\nCada um cobre uma plataforma (Shopee / ML / Amazon).\n\nConfig: retry=false, onError=stopWorkflow. Falha aqui = mensagem perdida.",
-        "height": 350,
-        "width": 1000,
+        "height": 494,
+        "width": 936,
         "color": 5
       },
       "id": "82eddc22-40c3-4dbf-a8b9-cadd0495e7fd",
       "name": "Sticky Note 6",
       "type": "n8n-nodes-base.stickyNote",
       "position": [
-        5712,
-        960
+        5664,
+        1056
       ],
       "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "model": "google/gemini-2.5-flash-lite",
+        "options": {}
+      },
+      "id": "b47e5cb1-9299-4637-9fa4-d7320236928a",
+      "name": "OpenRouter Chat Model3",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "position": [
+        2304,
+        752
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "openRouterApi": {
+          "id": "LvtiDMPFLJ381Gv3",
+          "name": "OpenRouter account"
+        }
+      }
     },
     {
       "parameters": {
         "model": {
           "__rl": true,
           "mode": "list",
-          "value": "gpt-4o-mini",
-          "cachedResultName": "gpt-4o-mini"
+          "value": "gpt-4.1-mini",
+          "cachedResultName": "gpt-4.1-mini"
         },
+        "builtInTools": {},
         "options": {}
       },
-      "id": "openai-vinic-1780675395",
-      "name": "OpenAI Vinicius",
+      "id": "4a8cca2e-b5ef-44cd-9302-96c783340768",
+      "name": "OpenAI Chat Model",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
       "position": [
-        1792,
-        1104
+        2464,
+        768
       ],
-      "typeVersion": 1.2,
+      "typeVersion": 1.3,
+      "credentials": {
+        "openAiApi": {
+          "id": "OAve7do064jkrXXX",
+          "name": "OpenAi Vinicius"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini",
+          "cachedResultName": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "4fd88ade-a6cb-4ec9-9eed-1fef85c0c2cb",
+      "name": "OpenAI Chat Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "position": [
+        4768,
+        1024
+      ],
+      "typeVersion": 1.3,
       "credentials": {
         "openAiApi": {
           "id": "OAve7do064jkrXXX",
@@ -1485,13 +1522,7 @@
             "index": 0
           }
         ],
-        [
-          {
-            "node": "AI Agent1",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Edit Fields2": {
@@ -1850,7 +1881,7 @@
         ]
       ]
     },
-    "Google Gemini Chat Model": {
+    "OpenRouter Chat Model3": {
       "ai_languageModel": [
         [
           {
@@ -1860,50 +1891,31 @@
           }
         ]
       ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 1
+          }
+        ]
+      ]
     }
   },
-  "pinData": {
-    "Webhook": [
-      {
-        "headers": {
-          "host": "webhook.redirectflow.online",
-          "user-agent": "axios/1.13.6",
-          "content-length": "695",
-          "accept": "application/json, text/plain, */*",
-          "accept-encoding": "gzip, compress, deflate, br",
-          "content-type": "application/json",
-          "x-forwarded-for": "89.116.225.101",
-          "x-forwarded-host": "webhook.redirectflow.online",
-          "x-forwarded-port": "443",
-          "x-forwarded-proto": "https",
-          "x-forwarded-server": "b73c96900eb3",
-          "x-real-ip": "89.116.225.101"
-        },
-        "params": {},
-        "query": {},
-        "body": {
-          "source": "telegram",
-          "wpUserId": "50",
-          "telegramId": "5244851578",
-          "telegramPhone": "5548999719908",
-          "chatId": "-1001176023440",
-          "chatTitle": "Canal",
-          "messageId": 19228,
-          "text": "⚫️ **Cama Box Queen + Colchão de Espuma D45 Pillow Top - Cinza**\n\nPOR: R$1.161,17 no Pix\n\n🔥 resgate o cupom de **11% OFF**\n\n🛒 Compre aqui: https://meli.la/29rAKsE\n\n⚠️ Oferta por tempo limitado!\n🎉 #publi · esses são links de afiliado | você não paga nenhum adicional e ainda ajuda o canal.",
-          "links": [
-            "https://meli.la/29rAKsE"
-          ],
-          "senderId": "-1001176023440",
-          "date": "2026-06-10T22:17:01.000Z",
-          "hasLinks": true,
-          "imageUrl": "https://telegram.rediirect.com/media/50_19228_1781129826896.jpg",
-          "hasImage": true
-        },
-        "webhookUrl": "https://webhook.redirectflow.online/webhook/telegram",
-        "executionMode": "production"
-      }
-    ]
-  },
+  "pinData": {},
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "5d3c3ae74e3b5a400ab6b60411c4de9ee710f1877f4609a2dc7b61fe2cfaadff"
