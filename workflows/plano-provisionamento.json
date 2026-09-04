@@ -1,0 +1,872 @@
+{
+  "name": "PLANO - provisionamento de conta e assinatura",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "plano",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        0
+      ],
+      "id": "f755b7ca-bda5-4779-b129-6e44cf4c298c",
+      "name": "PLANO",
+      "webhookId": "0b8eedd5-55d7-4b45-885a-469aab44aea7"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "email",
+              "value": "={{ ($json.body.contact.email || '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "nome",
+              "value": "={{ ($json.body.contact.name || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "phone",
+              "value": "={{ `${$json.body.contact.phone_local_code || ''}${$json.body.contact.phone_number || ''}`.replace(/\\D/g, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "valor",
+              "value": "={{ Number($json.body.product.total_value) }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        0
+      ],
+      "id": "4bf0cb6c-8d30-467d-ba8b-f34bc789d288",
+      "name": "Normaliza dados"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "url": "https://vecnhoqtfsimasvglkqw.supabase.co/rest/v1/usuarios",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,nome,email"
+            },
+            {
+              "name": "email",
+              "value": "=eq.{{ $json.email }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -280,
+        0
+      ],
+      "id": "b1000001-0000-4000-8000-000000000001",
+      "name": "Busca usuario",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        0
+      ],
+      "id": "4a8514be-600d-46cd-8815-abd7c838b911",
+      "name": "Usuario ja existe?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "usuario_id",
+              "value": "={{ $json.body[0].id }}",
+              "type": "number"
+            },
+            {
+              "id": "b2",
+              "name": "novo",
+              "value": "false",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        180,
+        -160
+      ],
+      "id": "b1000001-0000-4000-8000-000000000002",
+      "name": "Contexto - cliente existente"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rediirect.com/wp-json/custom/v1/create-user",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "__TOKEN_WP_CREATE_USER__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "username",
+              "value": "={{ $('Normaliza dados').first().json.email }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Normaliza dados').first().json.email }}"
+            },
+            {
+              "name": "password",
+              "value": "topafiliado"
+            },
+            {
+              "name": "first_name",
+              "value": "={{ $('Normaliza dados').first().json.nome }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        180,
+        160
+      ],
+      "id": "852b2d64-5f3e-4f50-8b28-87f53d40cc22",
+      "name": "Cria conta WordPress"
+    },
+    {
+      "parameters": {
+        "tableId": "usuarios",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "id",
+              "fieldValue": "={{ $json.user_id }}"
+            },
+            {
+              "fieldId": "nome",
+              "fieldValue": "={{ $('Normaliza dados').first().json.nome }}"
+            },
+            {
+              "fieldId": "email",
+              "fieldValue": "={{ $('Normaliza dados').first().json.email }}"
+            },
+            {
+              "fieldId": "telefone",
+              "fieldValue": "={{ $('Normaliza dados').first().json.phone }}"
+            },
+            {
+              "fieldId": "ativo",
+              "fieldValue": "true"
+            },
+            {
+              "fieldId": "created_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "updated_at",
+              "fieldValue": "={{ $now.toISO() }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        400,
+        160
+      ],
+      "id": "4d151fba-e862-41d9-bece-b036df25be9f",
+      "name": "Cria usuario",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "d1",
+              "name": "usuario_id",
+              "value": "={{ $('Cria conta WordPress').first().json.user_id }}",
+              "type": "number"
+            },
+            {
+              "id": "d2",
+              "name": "novo",
+              "value": "true",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        620,
+        160
+      ],
+      "id": "b1000001-0000-4000-8000-000000000003",
+      "name": "Contexto - cliente novo"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Mapeia o valor pago -> plano/limites/travas.\n// Fonte unica de verdade: substitui os dois Switch duplicados do fluxo antigo.\nconst PLANOS = {\n  97: {\n    plano_nome: 'PLANO STARTER',\n    plano_id: '5cc6e8fe-3d5a-42a3-913a-3fb3db746ea9',\n    custom_max_instancias: 1,\n    custom_max_grupos_monitorar: 1,\n    custom_max_grupos_disparar: 5,\n    starter_lock: true,\n    inst_lock: true,\n    sitebio_lock: true,\n  },\n  167: {\n    plano_nome: 'PLANO PROFISSIONAL',\n    plano_id: '53e7c85d-7223-4fd7-a53b-53cfeb607d51',\n    custom_max_instancias: 1,\n    custom_max_grupos_monitorar: 2,\n    custom_max_grupos_disparar: 10,\n    starter_lock: false,\n    inst_lock: true,\n    sitebio_lock: false,\n  },\n  247: {\n    plano_nome: 'PLANO BUSINESS',\n    plano_id: '705137df-41bf-44ff-873a-01c995b1b1c9',\n    custom_max_instancias: 2,\n    custom_max_grupos_monitorar: 3,\n    custom_max_grupos_disparar: 20,\n    starter_lock: false,\n    inst_lock: false,\n    sitebio_lock: false,\n  },\n};\n\nconst dados = $('Normaliza dados').first().json;\nconst ctx = $input.first().json;\n\nconst valor = Number(dados.valor);\nconst plano = PLANOS[valor];\n\nif (!plano) {\n  // Falha explicita: melhor um erro visivel no n8n do que uma compra\n  // que passa batido sem provisionar nada.\n  throw new Error(\n    `Valor de plano nao reconhecido: \"${dados.valor}\". ` +\n    `Compra de ${dados.email} (usuario_id ${ctx.usuario_id}) NAO foi provisionada. ` +\n    `Valores aceitos: ${Object.keys(PLANOS).join(', ')}.`,\n  );\n}\n\nreturn [{\n  json: {\n    usuario_id: ctx.usuario_id,\n    novo: ctx.novo,\n    email: dados.email,\n    nome: dados.nome,\n    phone: dados.phone,\n    valor,\n    ...plano,\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        0
+      ],
+      "id": "b1000001-0000-4000-8000-000000000004",
+      "name": "Define plano"
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "url": "https://vecnhoqtfsimasvglkqw.supabase.co/rest/v1/assinaturas",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "select",
+              "value": "id,usuario_id,plano_id,data_fim,status"
+            },
+            {
+              "name": "usuario_id",
+              "value": "=eq.{{ $json.usuario_id }}"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1080,
+        0
+      ],
+      "id": "2e446b06-2b4e-42e3-8eba-abc0b21f419f",
+      "name": "Busca assinatura",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $json.body.length > 0 }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1300,
+        0
+      ],
+      "id": "b1000001-0000-4000-8000-000000000005",
+      "name": "Ja tem assinatura?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "assinaturas",
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usuario_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Define plano').first().json.usuario_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "plano_id",
+              "fieldValue": "={{ $('Define plano').first().json.plano_id }}"
+            },
+            {
+              "fieldId": "custom_max_instancias",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_instancias }}"
+            },
+            {
+              "fieldId": "custom_max_grupos_monitorar",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_grupos_monitorar }}"
+            },
+            {
+              "fieldId": "custom_max_grupos_disparar",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_grupos_disparar }}"
+            },
+            {
+              "fieldId": "data_inicio",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "data_fim",
+              "fieldValue": "={{ $now.plus({ days: 31 }).toISO() }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "ativo"
+            },
+            {
+              "fieldId": "starter_lock",
+              "fieldValue": "={{ $('Define plano').first().json.starter_lock }}"
+            },
+            {
+              "fieldId": "inst_lock",
+              "fieldValue": "={{ $('Define plano').first().json.inst_lock }}"
+            },
+            {
+              "fieldId": "sitebio_lock",
+              "fieldValue": "={{ $('Define plano').first().json.sitebio_lock }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        -160
+      ],
+      "id": "0e317942-f4be-46c6-a21a-a382185ffe1f",
+      "name": "Atualiza assinatura",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "assinaturas",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "usuario_id",
+              "fieldValue": "={{ $('Define plano').first().json.usuario_id }}"
+            },
+            {
+              "fieldId": "plano_id",
+              "fieldValue": "={{ $('Define plano').first().json.plano_id }}"
+            },
+            {
+              "fieldId": "custom_max_instancias",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_instancias }}"
+            },
+            {
+              "fieldId": "custom_max_grupos_monitorar",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_grupos_monitorar }}"
+            },
+            {
+              "fieldId": "custom_max_grupos_disparar",
+              "fieldValue": "={{ $('Define plano').first().json.custom_max_grupos_disparar }}"
+            },
+            {
+              "fieldId": "data_inicio",
+              "fieldValue": "={{ $now.toISO() }}"
+            },
+            {
+              "fieldId": "data_fim",
+              "fieldValue": "={{ $now.plus({ days: 31 }).toISO() }}"
+            },
+            {
+              "fieldId": "status",
+              "fieldValue": "ativo"
+            },
+            {
+              "fieldId": "starter_lock",
+              "fieldValue": "={{ $('Define plano').first().json.starter_lock }}"
+            },
+            {
+              "fieldId": "inst_lock",
+              "fieldValue": "={{ $('Define plano').first().json.inst_lock }}"
+            },
+            {
+              "fieldId": "sitebio_lock",
+              "fieldValue": "={{ $('Define plano').first().json.sitebio_lock }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        160
+      ],
+      "id": "07371142-986e-494e-9951-e52cf1c27687",
+      "name": "Cria assinatura",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $('Define plano').first().json.novo }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1780,
+        0
+      ],
+      "id": "b1000001-0000-4000-8000-000000000006",
+      "name": "Cliente novo?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@redirectflow.com.br",
+        "toEmail": "={{ $('Normaliza dados').first().json.email }}",
+        "subject": "Bem-vindo (a) ao Redirect Flow - Seu acesso",
+        "html": "=<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Bem-vindo ao Redirect Flow</title>\n</head>\n<body style=\"margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa;\">\n    <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"background-color: #f5f7fa;\">\n        <tr>\n            <td style=\"padding: 40px 20px;\">\n                <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);\">\n\n                    <!-- Header branco com logo azul -->\n                    <tr>\n                        <td style=\"background-color: #ffffff; padding: 40px 30px; text-align: center; border-bottom: 1px solid #e2e8f0;\">\n                            <img src=\"https://rediirect.com/wp-content/uploads/2025/11/redirect-flowpreta.png\" alt=\"Redirect Flow\" style=\"max-width: 160px; height: auto; margin-bottom: 24px;\">\n                            <h1 style=\"color: #1a202c; font-size: 26px; font-weight: 600; margin: 0; line-height: 1.3;\">Bem-vindo ao Redirect Flow</h1>\n                            <p style=\"color: #718096; font-size: 15px; margin: 12px 0 0 0; line-height: 1.5;\">Sua conta está ativa e pronta para uso</p>\n                        </td>\n                    </tr>\n\n                    <!-- Conteudo -->\n                    <tr>\n                        <td style=\"padding: 40px 30px; background: linear-gradient(135deg, #4F7FFF 0%, #3D5FCC 100%);\">\n                            <p style=\"color: #ffffff; font-size: 15px; line-height: 1.7; margin: 0 0 28px 0;\">\n                                Seu acesso à plataforma Redirect Flow foi configurado com sucesso. Utilize as credenciais abaixo para fazer login e começar a gerenciar suas automações.\n                            </p>\n\n                            <!-- Box de credenciais -->\n                            <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"background-color: rgba(255, 255, 255, 0.95); border-radius: 8px; margin-bottom: 28px;\">\n                                <tr>\n                                    <td style=\"padding: 28px;\">\n                                        <h2 style=\"color: #1a202c; font-size: 16px; font-weight: 600; margin: 0 0 20px 0; letter-spacing: -0.2px;\">Credenciais de Acesso</h2>\n\n                                        <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\">\n                                            <tr>\n                                                <td style=\"padding-bottom: 16px;\">\n                                                    <p style=\"color: #718096; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 6px 0;\">E-mail</p>\n                                                    <p style=\"color: #1a202c; font-size: 15px; font-weight: 500; margin: 0;\">{{ $('Normaliza dados').first().json.email }}</p>\n                                                </td>\n                                            </tr>\n                                            <tr>\n                                                <td>\n                                                    <p style=\"color: #718096; font-size: 12px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin: 0 0 6px 0;\">Senha</p>\n                                                    <p style=\"color: #1a202c; font-size: 15px; font-weight: 600; margin: 0; font-family: 'Courier New', monospace; background-color: #f7fafc; padding: 10px 14px; border-radius: 6px; display: inline-block; border: 1px solid #e2e8f0;\">topafiliado</p>\n                                                </td>\n                                            </tr>\n                                        </table>\n                                    </td>\n                                </tr>\n                            </table>\n\n                            <!-- Botao CTA -->\n                            <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\">\n                                <tr>\n                                    <td style=\"text-align: center; padding-bottom: 28px;\">\n                                        <a href=\"https://rediirect.com/login\" style=\"display: inline-block; background-color: #ffffff; color: #4F7FFF; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); letter-spacing: -0.2px;\">\n                                            Acessar Plataforma\n                                        </a>\n                                    </td>\n                                </tr>\n                            </table>\n\n                            <!-- Recursos -->\n                            <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 24px;\">\n                                <tr>\n                                    <td>\n                                        <p style=\"color: #ffffff; font-size: 14px; font-weight: 600; margin: 0 0 16px 0; opacity: 0.95;\">Recursos disponíveis:</p>\n\n                                        <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\">\n                                            <tr>\n                                                <td style=\"padding: 6px 0;\">\n                                                    <span style=\"color: #ffffff; font-size: 14px; opacity: 0.9;\">• Gerenciamento de instâncias WhatsApp</span>\n                                                </td>\n                                            </tr>\n                                            <tr>\n                                                <td style=\"padding: 6px 0;\">\n                                                    <span style=\"color: #ffffff; font-size: 14px; opacity: 0.9;\">• Configuração de grupos e rodízio automatizado</span>\n                                                </td>\n                                            </tr>\n                                            <tr>\n                                                <td style=\"padding: 6px 0;\">\n                                                    <span style=\"color: #ffffff; font-size: 14px; opacity: 0.9;\">• Integração com APIs de afiliados</span>\n                                                </td>\n                                            </tr>\n                                            <tr>\n                                                <td style=\"padding: 6px 0;\">\n                                                    <span style=\"color: #ffffff; font-size: 14px; opacity: 0.9;\">• Monitoramento e relatórios em tempo real</span>\n                                                </td>\n                                            </tr>\n                                        </table>\n                                    </td>\n                                </tr>\n                            </table>\n                        </td>\n                    </tr>\n\n                    <!-- Footer -->\n                    <tr>\n                        <td style=\"background-color: #f7fafc; padding: 28px 30px; text-align: center;\">\n                            <p style=\"color: #718096; font-size: 13px; margin: 0 0 6px 0; line-height: 1.6;\">\n                                Dúvidas? Entre em contato com nosso suporte.\n                            </p>\n                            <p style=\"color: #a0aec0; font-size: 12px; margin: 0;\">\n                                © 2026 Redirect Flow • Todos os direitos reservados\n                            </p>\n                        </td>\n                    </tr>\n\n                </table>\n            </td>\n        </tr>\n    </table>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        160
+      ],
+      "id": "fa5050f9-d59d-4eb3-9c86-fca1ec84f808",
+      "name": "Email boas-vindas",
+      "webhookId": "75375ae1-e805-425f-b5df-614687bd4c65",
+      "credentials": {
+        "smtp": {
+          "id": "bIapoZ78T3zF3tZp",
+          "name": "noreply@redirectflow.com.br"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "noreply@redirectflow.com.br",
+        "toEmail": "={{ $('Normaliza dados').first().json.email }}",
+        "subject": "Redirect Flow - Assinatura Renovada",
+        "html": "=<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Assinatura Renovada - Redirect Flow</title>\n</head>\n<body style=\"margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f7fa;\">\n    <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"background-color: #f5f7fa;\">\n        <tr>\n            <td style=\"padding: 40px 20px;\">\n                <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);\">\n\n                    <!-- Header branco com logo azul -->\n                    <tr>\n                        <td style=\"background-color: #ffffff; padding: 40px 30px; text-align: center; border-bottom: 1px solid #e2e8f0;\">\n                            <img src=\"https://rediirect.com/wp-content/uploads/2025/11/redirect-flowpreta.png\" alt=\"Redirect Flow\" style=\"max-width: 160px; height: auto; margin-bottom: 24px;\">\n                            <h1 style=\"color: #1a202c; font-size: 26px; font-weight: 600; margin: 0; line-height: 1.3;\">Assinatura Renovada</h1>\n                            <p style=\"color: #718096; font-size: 15px; margin: 12px 0 0 0; line-height: 1.5;\">Seu plano foi renovado com sucesso</p>\n                        </td>\n                    </tr>\n\n                    <!-- Conteudo -->\n                    <tr>\n                        <td style=\"padding: 40px 30px; background: linear-gradient(135deg, #4F7FFF 0%, #3D5FCC 100%);\">\n                            <p style=\"color: #ffffff; font-size: 15px; line-height: 1.7; margin: 0 0 24px 0;\">\n                                Sua assinatura do Redirect Flow foi renovada automaticamente e está ativa para o próximo período.\n                            </p>\n\n                            <p style=\"color: rgba(255, 255, 255, 0.9); font-size: 15px; line-height: 1.7; margin: 0 0 28px 0;\">\n                                Continue aproveitando todos os recursos da plataforma sem interrupções.\n                            </p>\n\n                            <!-- Botao CTA -->\n                            <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\">\n                                <tr>\n                                    <td style=\"text-align: center; padding-bottom: 28px;\">\n                                        <a href=\"https://rediirect.com/login\" style=\"display: inline-block; background-color: #ffffff; color: #4F7FFF; text-decoration: none; font-size: 15px; font-weight: 600; padding: 14px 36px; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15); letter-spacing: -0.2px;\">\n                                            Acessar Plataforma\n                                        </a>\n                                    </td>\n                                </tr>\n                            </table>\n\n                            <!-- Informacoes adicionais -->\n                            <table role=\"presentation\" cellspacing=\"0\" cellpadding=\"0\" border=\"0\" width=\"100%\" style=\"border-top: 1px solid rgba(255, 255, 255, 0.2); padding-top: 24px;\">\n                                <tr>\n                                    <td>\n                                        <p style=\"color: rgba(255, 255, 255, 0.9); font-size: 14px; margin: 0; line-height: 1.6;\">\n                                            Para visualizar detalhes da sua assinatura, acesse a seção \"Dados da Conta\" no painel administrativo.\n                                        </p>\n                                    </td>\n                                </tr>\n                            </table>\n                        </td>\n                    </tr>\n\n                    <!-- Footer -->\n                    <tr>\n                        <td style=\"background-color: #f7fafc; padding: 28px 30px; text-align: center;\">\n                            <p style=\"color: #718096; font-size: 13px; margin: 0 0 6px 0; line-height: 1.6;\">\n                                Dúvidas? Entre em contato com nosso suporte.\n                            </p>\n                            <p style=\"color: #a0aec0; font-size: 12px; margin: 0;\">\n                                © 2026 Redirect Flow • Todos os direitos reservados\n                            </p>\n                        </td>\n                    </tr>\n\n                </table>\n            </td>\n        </tr>\n    </table>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        -160
+      ],
+      "id": "b3e7d2b3-ac9e-4265-8bcf-d151129d646e",
+      "name": "Email renovacao",
+      "webhookId": "75375ae1-e805-425f-b5df-614687bd4c65",
+      "credentials": {
+        "smtp": {
+          "id": "bIapoZ78T3zF3tZp",
+          "name": "noreply@redirectflow.com.br"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://redirect.uazapi.com/send/media",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "__TOKEN_UAZAPI__"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $('Normaliza dados').first().json.phone }}"
+            },
+            {
+              "name": "type",
+              "value": "image"
+            },
+            {
+              "name": "file",
+              "value": "https://rediirect.com/wp-content/uploads/2026/03/compra-aproved.jpeg"
+            },
+            {
+              "name": "text",
+              "value": "=🚀 *Bem-vindo ao Redirect Flow, {{ $('Normaliza dados').first().json.nome }}!*\n\nParabéns! A partir de agora seus grupos trabalham por você.\n\nChega de postar link na mão. O Redirect Flow cuida de tudo agora.\n\nAcesse seu painel:\n🔗 rediirect.com/login\n\nDados de acesso:\n📧 {{ $('Normaliza dados').first().json.email }}\n🔑 topafiliado\n\n*IMPORTANTE: A primeira configuração deve ser feita pelo computador.*\n\nEnquanto você descansa, o sistema vende. Bora! 💰"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        2220,
+        160
+      ],
+      "id": "8ff9fa29-b631-41e4-b8f2-014dc3b01bdd",
+      "name": "WhatsApp boas-vindas"
+    }
+  ],
+  "connections": {
+    "PLANO": {
+      "main": [
+        [
+          {
+            "node": "Normaliza dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normaliza dados": {
+      "main": [
+        [
+          {
+            "node": "Busca usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca usuario": {
+      "main": [
+        [
+          {
+            "node": "Usuario ja existe?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usuario ja existe?": {
+      "main": [
+        [
+          {
+            "node": "Contexto - cliente existente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cria conta WordPress",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto - cliente existente": {
+      "main": [
+        [
+          {
+            "node": "Define plano",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria conta WordPress": {
+      "main": [
+        [
+          {
+            "node": "Cria usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria usuario": {
+      "main": [
+        [
+          {
+            "node": "Contexto - cliente novo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contexto - cliente novo": {
+      "main": [
+        [
+          {
+            "node": "Define plano",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Define plano": {
+      "main": [
+        [
+          {
+            "node": "Busca assinatura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Busca assinatura": {
+      "main": [
+        [
+          {
+            "node": "Ja tem assinatura?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ja tem assinatura?": {
+      "main": [
+        [
+          {
+            "node": "Atualiza assinatura",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cria assinatura",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Atualiza assinatura": {
+      "main": [
+        [
+          {
+            "node": "Cliente novo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cria assinatura": {
+      "main": [
+        [
+          {
+            "node": "Cliente novo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cliente novo?": {
+      "main": [
+        [
+          {
+            "node": "Email boas-vindas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email renovacao",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Email boas-vindas": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp boas-vindas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "5d3c3ae74e3b5a400ab6b60411c4de9ee710f1877f4609a2dc7b61fe2cfaadff"
+  }
+}
