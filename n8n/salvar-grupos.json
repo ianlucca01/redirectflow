@@ -1,0 +1,390 @@
+{
+  "name": "salvar-grupos (rodizio de links)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "salvar-grupos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [-560, 0],
+      "id": "37e2b0ce-8f7b-4464-8a5d-5a40514a43be",
+      "name": "Webhook1",
+      "webhookId": "05b56224-8352-4c55-93fc-98330a2e94e4"
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "tableId": "instancias_whatsapp",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "instance_name",
+              "keyValue": "={{ $('Webhook1').first().json.body.instance_name }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-336, 0],
+      "id": "ba1d3640-5ccd-44f1-8dc1-88b630125287",
+      "name": "buscar_inst",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "supabaseApi": {
+          "id": "0EpUhAk2WvhnrKZb",
+          "name": "Supabase account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rediirect.com/wp-json/redirect-flow/v1/grupos/deletar-todos-instancia",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ instance_name: $('Webhook1').first().json.body.instance_name }) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [-112, 0],
+      "id": "4b26639b-fb49-4139-a38e-e95de0696a8f",
+      "name": "deleta_links_gruposdefinidos_anteriormente",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Normaliza o payload do WordPress e gera um item por grupo.\n// Aceita \"jids\" (nome atual) e \"grupos_jids\" (nome antigo) para nao quebrar\n// caso o plugin ainda envie o payload legado: era isso que estourava\n// \"Cannot read properties of undefined (reading 'map')\" e virava 500 no WP.\nconst body = $('Webhook1').first().json.body || {};\n\nconst rodizio_id = body.rodizio_id ?? body.cliente_id ?? null;\nconst instance_name = body.instance_name || '';\n\n// O token pode vir do WordPress ou da linha da instancia no Supabase.\nlet tokenSupabase = '';\ntry {\n  tokenSupabase = ($('buscar_inst').first().json || {}).token || '';\n} catch (e) {\n  tokenSupabase = '';\n}\nconst token = body.token || tokenSupabase || '';\n\nconst brutos = body.jids || body.grupos_jids || body.groups || [];\nconst jids = (Array.isArray(brutos) ? brutos : [brutos])\n  .map((j) => (typeof j === 'string' ? j : (j && (j.jid || j.JID)) || ''))\n  .map((j) => String(j).trim())\n  .filter(Boolean);\n\nconst erros = [];\nif (!rodizio_id) erros.push('rodizio_id ausente no payload');\nif (!instance_name) erros.push('instance_name ausente no payload');\nif (!token) erros.push('token nao encontrado (nem no payload do WordPress, nem na instancia \"' + instance_name + '\" no Supabase)');\nif (jids.length === 0) erros.push('nenhum grupo recebido em jids/grupos_jids');\n\n// Um item de erro vai direto para a resposta. Devolver 200 com o motivo e\n// melhor do que deixar a execucao morrer e o WordPress mostrar \"Codigo: 500\".\nif (erros.length > 0) {\n  return [{ json: { _ok: false, erro: erros.join('; '), rodizio_id, instance_name, total: jids.length } }];\n}\n\nreturn jids.map((jid) => ({\n  json: {\n    _ok: true,\n    rodizio_id,\n    instance_name,\n    token,\n    whatsapp_group_id: jid,\n  },\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [112, 0],
+      "id": "5e5f740f-46e6-4873-a944-d2e6be22bc86",
+      "name": "PreparaLoop"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "entrada-ok",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json._ok }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [336, 0],
+      "id": "guard-entrada",
+      "name": "entrada valida?"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Payload invalido: responde 200 com o motivo em vez de deixar o webhook\n// terminar sem Respond (o que faz o n8n devolver 500 ao WordPress).\nconst j = $json || {};\nreturn [{ json: { sucesso: false, erro: j.erro || 'payload invalido', total: 0, gravados: 0, pulados: 0, grupos: [], ignorados: [] } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [560, 176],
+      "id": "resposta-erro",
+      "name": "resposta_erro"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [560, -112],
+      "id": "b87a4055-c390-40f7-9e3f-4132e8a1f8df",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://redirect.uazapi.com/group/info",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "token",
+              "value": "={{ $json.token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "groupjid",
+              "value": "={{ $json.whatsapp_group_id }}"
+            },
+            {
+              "name": "getInviteLink",
+              "value": "true"
+            },
+            {
+              "name": "getRequestsParticipants",
+              "value": "true"
+            },
+            {
+              "name": "force",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 40000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [784, 16],
+      "id": "f2d2ea0f-9e8b-4fd0-8e5d-d28d41d12166",
+      "name": "LINK_DO_GRUPO",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 4000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Le a resposta da UAZAPI do proprio item ($json) em vez de $item(\"0\").$node[...]:\n// dentro do loop a resolucao de paired item quebra e derruba a execucao inteira.\nconst info = $json || {};\nconst origem = $('Loop Over Items').first().json || {};\n\nconst inviteLink = info.invite_link || info.inviteLink || '';\nconst whatsapp_group_id = info.JID || origem.whatsapp_group_id || '';\nconst nome_grupo = info.Name || '';\nconst participants = info.Participants;\nconst total_participantes = Array.isArray(participants) ? participants.length : 0;\n\n// wp_rfa_grupos tem NOT NULL em rodizio_id, whatsapp_group_id, nome_grupo e\n// link_convite. Sem essa guarda, um grupo sem dados derruba a execucao com\n// \"Column 'x' cannot be null\" e os grupos seguintes nem chegam a ser gravados.\nconst _gravar = Boolean(inviteLink) && Boolean(whatsapp_group_id) && Boolean(origem.rodizio_id);\n\nif (!_gravar) {\n  console.log('[rodizio] grupo PULADO:', JSON.stringify({\n    jid: whatsapp_group_id || null,\n    tem_invite_link: Boolean(inviteLink),\n    erro_uazapi: info.error || info.message || null,\n  }));\n}\n\nreturn [{\n  json: {\n    rodizio_id: origem.rodizio_id,\n    whatsapp_group_id: whatsapp_group_id,\n    nome_grupo: nome_grupo || whatsapp_group_id || 'sem nome',\n    link_grupo: inviteLink,\n    status: 'ativo',\n    participantes_atuais: total_participantes,\n    motivo: _gravar ? null : (info.error || info.message || 'UAZAPI nao devolveu link de convite'),\n    _gravar: _gravar,\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1008, 16],
+      "id": "64ed66a6-9f12-4cb6-a052-19c8897792bc",
+      "name": "PrepararDados",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "rz1",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              },
+              "leftValue": "={{ $json._gravar }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [1232, 16],
+      "id": "guard-rodizio",
+      "name": "tem dados?"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "table": {
+          "__rl": true,
+          "value": "wp_rfa_grupos",
+          "mode": "list",
+          "cachedResultName": "wp_rfa_grupos"
+        },
+        "dataMode": "defineBelow",
+        "columnToMatchOn": "whatsapp_group_id",
+        "valueToMatchOn": "={{ $json.whatsapp_group_id }}",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "rodizio_id",
+              "value": "={{ $json.rodizio_id }}"
+            },
+            {
+              "column": "link_convite",
+              "value": "={{ $json.link_grupo }}"
+            },
+            {
+              "column": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "column": "nome_grupo",
+              "value": "={{ $json.nome_grupo }}"
+            },
+            {
+              "column": "participantes_atuais",
+              "value": "={{ $json.participantes_atuais }}"
+            },
+            {
+              "column": "limite_maximo",
+              "value": "1000"
+            },
+            {
+              "column": "ultima_sincronizacao",
+              "value": "={{ $now.toFormat('yyyy-MM-dd HH:mm:ss') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [1456, -80],
+      "id": "d8507f17-1c64-4cd0-8925-2bf301514363",
+      "name": "Insert or update rows in a table",
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "mySql": {
+          "id": "J6hpnOK4AsqFzDkC",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// O node MySQL substitui o json pelo resultado da query, entao remonta os\n// dados do grupo para que o resumo final consiga listar o que foi gravado.\nconst dados = $('PrepararDados').first().json || {};\nconst db = $json || {};\nconst erroDb = db.error || db.message || null;\n\nreturn [{ json: { ...dados, gravado: !erroDb, motivo: erroDb || dados.motivo || null } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1680, -80],
+      "id": "marca-gravado",
+      "name": "marcar_gravado"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Branch \"done\" do loop: monta uma resposta unica e previsivel para o WordPress.\nconst items = $input.all().map((i) => i.json || {});\nconst gravados = items.filter((i) => i.gravado === true);\nconst pulados = items.filter((i) => i.gravado !== true);\n\nreturn [{\n  json: {\n    sucesso: gravados.length > 0,\n    total: items.length,\n    gravados: gravados.length,\n    pulados: pulados.length,\n    grupos: gravados.map((g) => ({\n      whatsapp_group_id: g.whatsapp_group_id,\n      nome_grupo: g.nome_grupo,\n      link_convite: g.link_grupo,\n      participantes_atuais: g.participantes_atuais,\n    })),\n    ignorados: pulados.map((g) => ({\n      whatsapp_group_id: g.whatsapp_group_id,\n      motivo: g.motivo || 'grupo sem link de convite',\n    })),\n  },\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [784, -256],
+      "id": "4e1f78d0-a3a6-4030-babe-56880215146a",
+      "name": "prepara final"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1008, -256],
+      "id": "356165d4-9489-472c-9f71-231175ae56f9",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "connections": {
+    "Webhook1": {
+      "main": [[{ "node": "buscar_inst", "type": "main", "index": 0 }]]
+    },
+    "buscar_inst": {
+      "main": [[{ "node": "deleta_links_gruposdefinidos_anteriormente", "type": "main", "index": 0 }]]
+    },
+    "deleta_links_gruposdefinidos_anteriormente": {
+      "main": [[{ "node": "PreparaLoop", "type": "main", "index": 0 }]]
+    },
+    "PreparaLoop": {
+      "main": [[{ "node": "entrada valida?", "type": "main", "index": 0 }]]
+    },
+    "entrada valida?": {
+      "main": [
+        [{ "node": "Loop Over Items", "type": "main", "index": 0 }],
+        [{ "node": "resposta_erro", "type": "main", "index": 0 }]
+      ]
+    },
+    "resposta_erro": {
+      "main": [[{ "node": "Respond to Webhook1", "type": "main", "index": 0 }]]
+    },
+    "Loop Over Items": {
+      "main": [
+        [{ "node": "prepara final", "type": "main", "index": 0 }],
+        [{ "node": "LINK_DO_GRUPO", "type": "main", "index": 0 }]
+      ]
+    },
+    "LINK_DO_GRUPO": {
+      "main": [[{ "node": "PrepararDados", "type": "main", "index": 0 }]]
+    },
+    "PrepararDados": {
+      "main": [[{ "node": "tem dados?", "type": "main", "index": 0 }]]
+    },
+    "tem dados?": {
+      "main": [
+        [{ "node": "Insert or update rows in a table", "type": "main", "index": 0 }],
+        [{ "node": "Loop Over Items", "type": "main", "index": 0 }]
+      ]
+    },
+    "Insert or update rows in a table": {
+      "main": [[{ "node": "marcar_gravado", "type": "main", "index": 0 }]]
+    },
+    "marcar_gravado": {
+      "main": [[{ "node": "Loop Over Items", "type": "main", "index": 0 }]]
+    },
+    "prepara final": {
+      "main": [[{ "node": "Respond to Webhook1", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {
+    "Webhook1": [
+      {
+        "headers": {
+          "content-type": "application/json",
+          "user-agent": "WordPress/6.8.8; https://rediirect.com"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "rodizio_id": 1019,
+          "instance_name": "garimpamosofertas",
+          "instance_id": null,
+          "token": null,
+          "jids": ["120363429294275397@g.us"]
+        },
+        "webhookUrl": "https://webhook.redirectflow.online/webhook/salvar-grupos",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5d3c3ae74e3b5a400ab6b60411c4de9ee710f1877f4609a2dc7b61fe2cfaadff"
+  }
+}
